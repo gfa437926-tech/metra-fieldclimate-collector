@@ -121,7 +121,7 @@ async def sync_once():
         sid=station['station_id']
         for group in config.GROUPS:
             try:
-                payload=await api.get(f'/data/optimized/{sid}/{group}/from/{start}/to/{end}')
+                payload=await api.get(f'/data/{sid}/{group}/from/{start}/to/{end}')
                 if sid == stations[0]['station_id'] and group == config.GROUPS[0]:
                     if isinstance(payload, dict):
                         sensor_map = payload.get('data')
