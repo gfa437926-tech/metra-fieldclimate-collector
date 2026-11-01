@@ -300,18 +300,40 @@
     {key:"total_cloud_cover",label:"الغطاء السحابي",icon:"☁️",unit:"أثمان",max:8},
     {key:"precipitation_amount",label:"الهطول",icon:"🌧️",unit:"مم",max:100}
   ];
+  const classicFieldInfo={
+    dry_temp:["درجة الحرارة الجافة","🌡️","°م",50],wet_temp:["درجة الحرارة الرطبة","🌡️","°م",45],min_temperature:["الصغرى اليومية","❄️","°م",45],max_temperature:["العظمى اليومية","🔥","°م",55],
+    dew_point:["درجة نقطة الندى","🌫️","°م",40],relative_humidity:["الرطوبة النسبية","💧","%",100],station_pressure:["الضغط الجوي للمحطة","🧭","hPa",1100],sea_level_pressure:["الضغط عند سطح البحر","🧭","hPa",1100],vapor_pressure:["ضغط البخار","💧","hPa",60],vapor_pressure_diff:["عجز ضغط البخار","💧","hPa",10],
+    wind_speed:["سرعة الرياح","🌬️","م/ث",40],avg_wind_speed:["متوسط سرعة الرياح","🌬️","م/ث",40],wind_direction:["اتجاه الرياح","🧭","°",360],avg_wind_direction:["متوسط اتجاه الرياح","🧭","°",360],
+    visibility:["مدى الرؤية","👁️","كم",50],total_cloud_cover:["الغطاء السحابي","☁️","أثمان",8],cloud1_amount:["كمية السحب – الطبقة 1","☁️","أثمان",8],cloud2_amount:["كمية السحب – الطبقة 2","☁️","أثمان",8],cloud3_amount:["كمية السحب – الطبقة 3","☁️","أثمان",8],cloud4_amount:["كمية السحب – الطبقة 4","☁️","أثمان",8],
+    cloud1_height:["ارتفاع السحب – الطبقة 1","☁️","م",12000],cloud2_height:["ارتفاع السحب – الطبقة 2","☁️","م",12000],cloud3_height:["ارتفاع السحب – الطبقة 3","☁️","م",12000],
+    precipitation_amount:["كمية الهطول","🌧️","مم",100],cover12:["تغطية السحب 1–2","☁️","",100],cover123:["تغطية السحب 1–2–3","☁️","",100],
+    pressure_slope:["ميل الضغط","📈","",10],pressure_shape:["شكل تغير الضغط","📈","",10]
+  };
   function renderClassicGauges(){
-    const r=classicWeatherRows.find(x=>x.station_name===classicSelected);
-    if(!r){$("classicWeatherGauges").innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
+    const r=classicWeatherRows.find(x=>x.station_name===classicSelected),root=$("classicWeatherGauges");
+    if(!r){root.innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
     $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";
-    $("classicWeatherGauges").innerHTML=cwMetrics.map(m=>{const v=cwVal(r[m.key]),pct=v===null?0:Math.max(0,Math.min(100,Math.abs(v)/m.max*100));return '<div class="classic-gauge classic-gauge--'+m.key+'"><span class="g-icon">'+m.icon+'</span><span class="g-label">'+m.label+'</span><strong class="g-value">'+cwFmt(v)+'</strong><span class="g-unit">'+m.unit+'</span><div class="g-track"><i style="width:'+pct+'%"></i></div></div>';}).join("");
+    const ignored=new Set(["id","station_name","submission_date","submission_time","local_time","utc_time","report_type","status","station_latitude","station_longitude","latitude","longitude","station_altitude","created_at","updated_at","user_id","user_email","user_name","user_role","report_id","observer_notes"]);
+    const fields=Object.entries(r).filter(([k,v])=>!ignored.has(k)&&v!==null&&v!==undefined&&String(v).trim()!==""&&String(v).trim()!=="—");
+    const iconFor=(key)=>classicFieldInfo[key]?.[1]||(/weather|sky|cloud/.test(key)?"☁️":/pressure/.test(key)?"🧭":/wind/.test(key)?"🌬️":/temp/.test(key)?"🌡️":"📟");
+    const cards=fields.map(([key,raw])=>{
+      const info=classicFieldInfo[key]||[key.replaceAll("_"," "),iconFor(key),"",100],label=info[0],unit=info[2],max=info[3]||100;
+      const value=cwVal(raw),isDirection=/direction/.test(key),isNumeric=value!==null;
+      let face;
+      if(isDirection&&isNumeric){face='<div class="digital-compass"><span>N</span><i style="--direction:'+value+'deg">▲</i><small>'+cwFmt((value%360+360)%360,0)+'°</small></div>';}
+      else if(isNumeric){const pct=Math.max(0,Math.min(100,Math.abs(value)/max*100));face='<div class="digital-gauge" style="--gauge-pct:'+pct+'%"><div class="gauge-core"><b>'+cwFmt(value,3)+'</b><small>'+esc(unit)+'</small></div></div>';}
+      else {face='<div class="classic-text-face"><span>'+iconFor(key)+'</span><b>'+esc(raw)+'</b></div>';}
+      const description=isNumeric?(Math.round(Math.max(0,Math.min(100,Math.abs(value)/max*100)))+'% من نطاق المؤشر'):"قراءة وصفية من التقرير";
+      return '<details class="device device--dynamic classic-device"><summary class="device-summary"><div class="device-head"><span>'+iconFor(key)+'</span>'+esc(label)+'</div><div class="device-category">محطة كلاسيكية · '+esc(key)+'</div>'+face+'<div class="device-reading">'+(isNumeric?cwFmt(value,3):esc(raw))+' <small>'+esc(unit)+'</small></div><div class="device-condition">'+description+' · اضغط للتفاصيل</div></summary><div class="device-expanded"><span class="metric-detail"><small>اسم الحقل</small><b>'+esc(key)+'</b></span><span class="metric-detail"><small>القيمة الأصلية</small><b>'+esc(raw)+'</b></span></div></details>';
+    }).join("");
+    root.innerHTML=cards?'<div class="device-grid">'+cards+'</div><div class="device-total">عدد القياسات والحقول المتاحة في أحدث تقرير: '+fields.length.toLocaleString("ar")+' · تشمل القيم الرقمية والوصفية</div>':'<div class="empty">لا توجد قياسات متاحة في التقرير الأخير.</div>';
   }
   function renderClassicLatestCharts(){
     const defs=[["dry_temp","الحرارة الجافة","°م"],["wet_temp","الحرارة الرطبة","°م"],["relative_humidity","الرطوبة النسبية","%"],["dew_point","نقطة الندى","°م"],["wind_speed","سرعة الرياح","م/ث"],["total_cloud_cover","الغطاء السحابي","أثمان"]];
     $("classicLatestCharts").innerHTML=defs.map(([key,title,unit])=>{const vals=classicWeatherRows.map(r=>({name:cwName(r),v:cwVal(r[key])})).filter(x=>x.v!==null);const max=Math.max(1,...vals.map(x=>Math.abs(x.v)));return '<div class="latest-chart"><h4>'+title+' · '+unit+'</h4><div class="latest-bars">'+(vals.length?vals.sort((a,b)=>b.v-a.v).map(x=>'<div class="latest-bar-row"><span class="station-label" title="'+esc(x.name)+'">'+esc(x.name)+'</span><span class="bar-bg"><i style="width:'+Math.max(2,Math.abs(x.v)/max*100)+'%"></i></span><b>'+cwFmt(x.v)+'</b></div>').join(""):'<div class="muted">لا توجد قيم متاحة</div>')+'</div></div>';}).join("");
   }
   async function loadClassicWeather(){
-    const rows=await query("classic_public_hourly_latest",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,total_cloud_cover,precipitation_amount,latitude,longitude,created_at",order:"station_name.asc",limit:"200"});
+    const rows=await query("classic_public_hourly_latest_all",{select:"*",order:"station_name.asc",limit:"200"});
     classicWeatherRows=rows;
     if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
     renderClassicGauges();renderClassicLatestCharts();renderStations();renderMap();
