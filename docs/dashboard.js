@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = {stations:[], selected:"", readings:[], requestId:0, map:null, markers:null};
+  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, map:null, markers:null};
   const stationArabic = {
     "AFRIN  / VS":"عفرين","AL-RAI  / VS":"الراعي","Azaz":"اعزاز","Harem":"حارم",
     "IDLEB":"إدلب","Jabal al-Zawiya  / VS":"جبل الزاوية","JARABLUS / VS":"جرابلس",
@@ -82,18 +82,35 @@
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(state.map);
     state.markers=L.layerGroup().addTo(state.map);
   }
+  function metricByName(row,names){
+    const all=row?.measurements?.values||{};
+    return Object.values(all).find(m=>names.includes(m?.name))||null;
+  }
+  function metricNumber(row,names,priority=["last","avg","sum","result","value","min","max"]){
+    const m=metricByName(row,names);if(!m)return null;
+    for(const k of priority){const v=m.values?.[k];if(v!==null&&v!==undefined&&Number.isFinite(Number(v)))return Number(v);}
+    return null;
+  }
+  function latestBrief(row){
+    if(!row)return "لا توجد قراءة مسجلة";
+    const t=metricNumber(row,["HC Air temperature","Air temperature"],["last","avg","result","value"]);
+    const rh=metricNumber(row,["HC Relative humidity","Relative humidity"],["last","avg","result","value"]);
+    const wind=metricNumber(row,["U-sonic wind speed","Wind speed"],["last","avg","result","value"]);
+    return '<div class="popup-metrics">'+(t===null?"":'<span>🌡️ '+num(t)+' °C</span>')+(rh===null?"":'<span>💧 '+num(rh)+'%</span>')+(wind===null?"":'<span>🌬️ '+num(wind)+' م/ث</span>')+'</div><small>آخر سجل: '+fmt(row.recorded_at)+'</small>';
+  }
   function renderMap(){
     if(!window.L)return;
     initMap();state.markers.clearLayers();const bounds=[];
     state.stations.forEach(s=>{
-      const lat=Number(s.latitude),lon=Number(s.longitude);
-      if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
-      const label=stationLabel(s),marker=L.marker([lat,lon],{title:label,alt:label}).bindPopup('<div class="map-popup"><b>'+esc(label)+'</b><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><br><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">عرض قياسات المحطة</button></div>');
+      const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+      const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
+      const popup='<div class="map-popup"><b>'+esc(label)+'</b><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
+      const marker=L.marker([lat,lon],{title:label,alt:label}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".map-select");if(btn)btn.onclick=()=>selectStation(s.station_id,false);});
       marker.addTo(state.markers);state.markers.set(s.station_id,marker);bounds.push([lat,lon]);
     });
     if(bounds.length)state.map.fitBounds(bounds,{padding:[24,24],maxZoom:9});
-    $("mapCount").textContent=bounds.length.toLocaleString("ar")+" محطة على الخريطة";
+    $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.latestByStation.size.toLocaleString("ar")+" محطة لها سجل";
     setTimeout(()=>state.map.invalidateSize(),100);
   }
   function metricCard(metric){
@@ -117,62 +134,103 @@
     {keys:["EAG Soil moisture 6","EAG Soil moisture 9","PI-Profile Soil Moisture 6"],label:"رطوبة التربة",icon:"🌿"}
   ];
   function renderSummary(){
-    const root=$("stationSummary");if(!root)return;
-    const found={};
-    for(const reading of state.readings){
-      const metrics=reading.measurements?.values;
-      if(!metrics||typeof metrics!=="object")continue;
-      for(const spec of summaryMetrics){
-        if(found[spec.label])continue;
-        for(const key of spec.keys){
-          const metric=metrics[key];if(!metric)continue;
-          const vals=metric.values&&typeof metric.values==="object"?metric.values:{};
-          const mainKey=["last","avg","sum","result","value","min","max"].find(k=>vals[k]!==null&&vals[k]!==undefined);
-          const value=mainKey?vals[mainKey]:null;
-          if(value===null||value===undefined||typeof value==="object")continue;
-          found[spec.label]={...spec,value,unit:metric.unit||"",at:reading.recorded_at};
-          break;
-        }
-      }
-      if(Object.keys(found).length===summaryMetrics.length)break;
-    }
-    const cards=summaryMetrics.filter(x=>found[x.label]).map(x=>{
-      const m=found[x.label];
-      return '<div class="summary-card"><div class="summary-label"><span>'+m.icon+'</span>'+esc(m.label)+'</div><div class="summary-value">'+num(m.value)+' <small>'+esc(m.unit)+'</small></div><div class="summary-time">آخر قياس: '+fmt(m.at)+'</div></div>';
+    const row=state.readings[0],root=$("stationSummary");if(!root)return;
+    if(!row){root.innerHTML='<div class="summary-empty">لا يوجد سجل لهذه المحطة.</div>';return;}
+    const specs=[
+      {keys:["HC Air temperature","Air temperature"],label:"حرارة الهواء",unit:"°C",icon:"🌡️"},
+      {keys:["HC Relative humidity","Relative humidity"],label:"الرطوبة",unit:"%",icon:"💧"},
+      {keys:["Precipitation"],label:"الهطول",unit:"mm",icon:"🌧️"},
+      {keys:["U-sonic wind speed","Wind speed"],label:"سرعة الرياح",unit:"m/s",icon:"🌬️"},
+      {keys:["U-sonic wind dir","Wind direction","Wind orientation"],label:"اتجاه الرياح",unit:"°",icon:"🧭"},
+      {keys:["Solar radiation"],label:"الإشعاع الشمسي",unit:"W/m²",icon:"☀️"},
+      {keys:["Soil temperature","Soil temperature 2","Soil temperature 6","Soil temperature 9"],label:"حرارة التربة",unit:"°C",icon:"🌱"},
+      {keys:["EAG Soil moisture 6","EAG Soil moisture 9","PI-Profile Soil Moisture 6"],label:"رطوبة التربة",unit:"",icon:"🌿"}
+    ];
+    root.innerHTML='<div class="latest-stamp">أحدث سجل للمحطة · '+fmt(row.recorded_at)+' · '+(row.group_name==="hourly"?"ساعي":"يومي")+'</div><div class="instrument-grid">'+specs.map(x=>{
+      const m=metricByName(row,x.keys),v=metricNumber(row,x.keys);
+      return '<div class="instrument"><div class="instrument-title"><span>'+x.icon+'</span>'+x.label+'</div><div class="instrument-value">'+(v===null?"—":num(v))+' <small>'+esc(m?.unit||x.unit)+'</small></div></div>';
+    }).join("")+'</div>';
+    renderGaugeBoard(row);
+  }
+  function renderGaugeBoard(row){
+    const root=$("gaugeBoard");if(!root)return;
+    const dir=metricNumber(row,["U-sonic wind dir","Wind direction","Wind orientation"]);
+    const speed=metricNumber(row,["U-sonic wind speed","Wind speed"]);
+    const temp=metricNumber(row,["HC Air temperature","Air temperature"]);
+    const hum=metricNumber(row,["HC Relative humidity","Relative humidity"]);
+    const rain=metricNumber(row,["Precipitation"],["sum","last","avg"]);
+    const solar=metricNumber(row,["Solar radiation"],["avg","last"]);
+    const compass=dir===null?'<div class="gauge-empty">لا توجد قراءة اتجاه</div>':'<div class="compass"><span class="north">ش</span><span class="east">ق</span><span class="south">ج</span><span class="west">غ</span><i style="transform:rotate('+dir+'deg)"></i><b>🧭</b></div><strong>'+num(dir)+'°</strong>';
+    const gauge=(label,icon,value,unit,max)=>'<div class="device"><div class="device-head"><span>'+icon+'</span>'+label+'</div><div class="dial" style="--pct:'+Math.max(0,Math.min(100,(value??0)/max*100))+'%"><div class="dial-inner"><b>'+(value===null?"—":num(value))+'</b><small>'+unit+'</small></div></div></div>';
+    root.innerHTML='<div class="device-grid"><div class="device"><div class="device-head">🧭 بوصلة اتجاه الرياح</div>'+compass+'</div>'+gauge("سرعة الرياح","🌬️",speed,"م/ث",30)+gauge("درجة حرارة الهواء","🌡️",temp,"°C",50)+gauge("الرطوبة النسبية","💧",hum,"% ",100)+gauge("الهطول المطري","🌧️",rain,"mm",50)+gauge("الإشعاع الشمسي","☀️",solar,"W/m²",1200)+'</div>';
+  }
+  function chartSvg(points,label,unit){
+    const vals=points.filter(p=>p.v!==null);if(vals.length<2)return '<div class="chart-empty">لا توجد نقاط كافية خلال آخر 24 ساعة</div>';
+    const w=640,h=190,pad=28,min=Math.min(...vals.map(p=>p.v)),max=Math.max(...vals.map(p=>p.v)),span=max-min||1;
+    const xy=vals.map((p,i)=>[pad+i*(w-2*pad)/(vals.length-1),h-pad-(p.v-min)/span*(h-2*pad)]);
+    const poly=xy.map(p=>p.join(",")).join(" ");
+    return '<svg class="chart-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(label)+' خلال آخر 24 ساعة"><path class="chart-grid" d="M'+pad+' '+pad+'H'+(w-pad)+' M'+pad+' '+(h/2)+'H'+(w-pad)+' M'+pad+' '+(h-pad)+'H'+(w-pad)+'"/><polyline points="'+poly+'" fill="none" stroke="#62e8bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+xy.filter((p,i)=>i===0||i===xy.length-1).map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="#a5f5db"/>').join("")+'<text x="'+pad+'" y="17" fill="#a9bdca" font-size="12">'+num(max)+' '+esc(unit)+'</text><text x="'+pad+'" y="'+(h-5)+'" fill="#a9bdca" font-size="12">'+num(min)+' '+esc(unit)+'</text></svg>';
+  }
+  function renderHistory(){
+    const root=$("historyCharts");if(!root)return;
+    const defs=[
+      {label:"درجة حرارة الهواء",names:["HC Air temperature","Air temperature"],unit:"°C"},
+      {label:"الرطوبة النسبية",names:["HC Relative humidity","Relative humidity"],unit:"%"},
+      {label:"سرعة الرياح",names:["U-sonic wind speed","Wind speed"],unit:"m/s"},
+      {label:"الهطول المطري",names:["Precipitation"],unit:"mm"},
+      {label:"الإشعاع الشمسي",names:["Solar radiation"],unit:"W/m²"}
+    ];
+    root.innerHTML=defs.map(d=>{
+      const pts=state.history.map(r=>({t:r.recorded_at,v:metricNumber(r,d.names,["avg","last","sum","result","value"])})).filter(p=>p.v!==null);
+      return '<article class="chart-card"><b>'+d.label+'</b><small>'+pts.length+' قراءة خلال آخر 24 ساعة</small>'+chartSvg(pts,d.label,d.unit)+'</article>';
     }).join("");
-    root.innerHTML=cards?'<div class="summary-grid">'+cards+'</div>':'<div class="summary-empty">لا تتوفر مؤشرات ملخصة لهذه المحطة في السجلات المحمّلة.</div>';
+  }
+  function renderTemperatureComparison(){
+    const root=$("temperatureComparison");if(!root)return;
+    const rows=state.stations.map(s=>({name:stationLabel(s),row:state.latestByStation.get(s.station_id)})).map(x=>({...x,v:metricNumber(x.row,["HC Air temperature","Air temperature"],["avg","last","result","value"])})).filter(x=>x.v!==null).sort((a,b)=>b.v-a.v);
+    if(!rows.length){root.innerHTML='<div class="chart-empty">لا توجد درجات حرارة متاحة للمقارنة.</div>';return;}
+    const max=Math.max(...rows.map(x=>x.v)),min=Math.min(...rows.map(x=>x.v));
+    root.innerHTML='<div class="comparison-note">مقارنة أحدث درجة حرارة متاحة لكل محطة · '+rows.length+' محطة · '+num(min)+' إلى '+num(max)+' °C</div>'+rows.map(x=>'<div class="bar-row"><span>'+esc(x.name)+'</span><div class="bar-track"><i style="width:'+Math.max(2,(x.v-min)/(max-min||1)*100)+'%"></i></div><b>'+num(x.v)+'°</b></div>').join("");
   }
   function renderReadings(){
-    renderSummary();
-    $("readings").innerHTML=state.readings.length?state.readings.map(r=>{
-      const raw=r.measurements&&r.measurements.values&&typeof r.measurements.values==="object"?r.measurements.values:{};
-      const cards=Object.entries(raw).map(([key,m])=>metricCard({...m,code:m.code??key})).join("");
-      return '<article class="reading"><div class="reading-head"><b>'+fmt(r.recorded_at)+'</b><span class="muted">'+(r.group_name==="hourly"?"بيانات ساعية":"بيانات يومية")+'</span></div><div class="sensor-grid">'+(cards||'<div class="empty">لا توجد تفاصيل حساسات في هذا السجل.</div>')+'</div></article>';
-    }).join(""):'<div class="empty">لا توجد قياسات لهذه المحطة ضمن هذا الاختيار.</div>';
-    $("readingCount").textContent=state.readings.length.toLocaleString("ar");
+    renderSummary();renderHistory();
+    const row=state.readings[0];
+    $("readings").innerHTML=row?'<article class="reading"><div class="reading-head"><b>'+fmt(row.recorded_at)+'</b><span class="muted">'+(row.group_name==="hourly"?"أحدث سجل ساعي":"أحدث سجل يومي")+'</span></div><div class="sensor-grid">'+Object.entries(row.measurements?.values||{}).map(([key,m])=>metricCard({...m,code:m.code??key})).join("")+'</div></article>':'<div class="empty">لا توجد قياسات مسجلة لهذه المحطة.</div>';
+    $("readingCount").textContent=(row?1:0).toLocaleString("ar");
   }
   async function loadReadings(){
     const request=++state.requestId;
     if(!state.selected){state.readings=[];renderReadings();return;}
     $("readings").innerHTML='<div class="empty">جارٍ تحميل القياسات…</div>';
     try{
-      const p={select:"station_id,station_name,recorded_at,group_name,measurements",station_id:"eq."+state.selected,order:"recorded_at.desc",limit:"30"};
-      if($("group").value)p.group_name="eq."+ $("group").value;
-      const rows=await query("fieldclimate_public_readings",p);
+     async function loadReadings(){
+    const request=++state.requestId;
+    if(!state.selected){state.readings=[];state.history=[];renderReadings();return;}
+    $("readings").innerHTML='<div class="empty">جارٍ تحميل أحدث سجل…</div>';
+    try{
+      const latest=await query("fieldclimate_public_latest_readings",{select:"station_id,station_name,recorded_at,group_name,measurements,fetched_at",station_id:"eq."+state.selected,limit:"1"});
       if(request!==state.requestId)return;
-      state.readings=rows;renderReadings();
+      state.readings=latest;
+      const since=new Date(Date.now()-24*60*60*1000).toISOString();
+      state.history=await query("fieldclimate_public_readings",{select:"station_id,station_name,recorded_at,group_name,measurements",station_id:"eq."+state.selected,recorded_at:"gte."+since,order:"recorded_at.asc",limit:"1500"});
+      if(request!==state.requestId)return;
+      renderReadings();
     }catch(e){if(request!==state.requestId)return;$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';status("تعذر تحميل القياسات: "+e.message,"err");}
   }
   async function load(){
-    $("refresh").disabled=true;status("جارٍ الاتصال بقاعدة البيانات…");
+    $("refresh").disabled=true;status("جارٍ تحميل آخر سجل لكل محطة والبيانات الزمنية…");
     try{
-      state.stations=await query("fieldclimate_public_stations",{select:"station_id,station_name,latitude,longitude,altitude_m,last_synced_at",order:"station_name.asc",limit:"500"});
-      $("stationCount").textContent=state.stations.length.toLocaleString("ar");
-      const recent=await query("fieldclimate_public_readings",{select:"station_id",order:"recorded_at.desc",limit:"1000"});
-      $("activeCount").textContent=new Set(recent.map(x=>x.station_id)).size.toLocaleString("ar");
-      $("lastSync").textContent=fmt(state.stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
-      if(!state.stations.some(x=>x.station_id===state.selected))state.selected=state.stations[0]?.station_id||"";
-      renderStations();renderMap();await loadReadings();status("متصل · تم تحميل البيانات","ok");
+      const [stations,latest]=await Promise.all([
+        query("fieldclimate_public_stations",{select:"station_id,station_name,latitude,longitude,altitude_m,last_synced_at",order:"station_name.asc",limit:"500"}),
+        query("fieldclimate_public_latest_readings",{select:"station_id,station_name,recorded_at,group_name,measurements,fetched_at",order:"recorded_at.desc",limit:"500"})
+      ]);
+      state.stations=stations;state.latestByStation=new Map(latest.map(r=>[r.station_id,r]));
+      $("stationCount").textContent=stations.length.toLocaleString("ar");
+      const fresh=latest.filter(r=>Date.now()-new Date(r.recorded_at).getTime()<=24*60*60*1000);
+      $("activeCount").textContent=fresh.length.toLocaleString("ar");
+      $("lastSync").textContent=fmt(stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
+      if(!stations.some(x=>x.station_id===state.selected))state.selected=stations[0]?.station_id||"";
+      renderStations();renderMap();renderTemperatureComparison();await loadReadings();status("متصل · أحدث سجل لكل محطة جاهز","ok");
     }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
     finally{$("refresh").disabled=false;}
   }
