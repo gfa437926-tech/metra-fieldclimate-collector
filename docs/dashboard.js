@@ -139,8 +139,10 @@
     classicWeatherRows.forEach(r=>{
       const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;
       const label=cwName(r);
-      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة كلاسيكية</small><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span></div>';
-      L.marker([lat,lon],{title:label,icon:stationIcon("classic")}).bindPopup(popup).addTo(state.markerLayer);bounds.push([lat,lon]);
+      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة كلاسيكية</small><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span><button type="button" class="map-select classic-map-select" data-classic-station="'+esc(encodeURIComponent(r.station_name))+'">فتح لوحة المحطة</button></div>';
+      const marker=L.marker([lat,lon],{title:label,icon:stationIcon("classic")}).bindPopup(popup);
+      marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".classic-map-select");if(btn)btn.onclick=()=>{const id=decodeURIComponent(btn.dataset.classicStation);classicSelected=id;state.selected="";$("automatedStationDetails").hidden=true;$("classicUnifiedDetails").hidden=false;$("detailStationTitle").textContent=label;$("detailStationSource").textContent="محطة كلاسيكية · أحدث تقرير متاح";renderStations();renderClassicGauges();$("historySection")?.scrollIntoView({behavior:"smooth",block:"start"});};});
+      marker.addTo(state.markerLayer);bounds.push([lat,lon]);
     });
     if(bounds.length)state.map.fitBounds(bounds,{padding:[24,24],maxZoom:9});
     $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.stations.length.toLocaleString("ar")+" آلية · "+classicWeatherRows.filter(r=>cwVal(r.latitude)!==null&&cwVal(r.longitude)!==null).length.toLocaleString("ar")+" كلاسيكية";
