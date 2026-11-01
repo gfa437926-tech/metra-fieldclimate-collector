@@ -191,6 +191,14 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 .device-total{padding:10px 3px;color:#9db4c0;font-size:.75rem}
 @media(max-width:520px){.device-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.device.device--dynamic{padding:9px}.digital-gauge,.digital-compass{width:88px;height:88px}.gauge-core b{font-size:.9rem}.device-head{font-size:.72rem}}
 
+
+/* Classic stations use the same live digital instrument interface */
+.classic-device{min-height:225px}
+.classic-text-face{height:104px;width:104px;margin:9px auto 5px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:radial-gradient(circle,#17313d,#071018 72%);border:2px solid #45616d;box-shadow:inset 0 0 0 7px #09131a,0 0 15px #56d8bb17;color:#8df2d5}
+.classic-text-face span{font-size:1.5rem}.classic-text-face b{font-size:.76rem;max-width:85px;overflow-wrap:anywhere;text-align:center}
+.classic-device .device-category{overflow-wrap:anywhere}
+@media(max-width:520px){.classic-text-face{width:88px;height:88px}}
+
 </style></head><body>
 <header class="top wrap"><div class="logo">المركز الوطني للأرصاد الجوية</div></header>
 <main class="wrap"><section class="app-toolbar"><div class="app-brand"><span class="brand-mark">☀</span><div><b>المركز الوطني للأرصاد الجوية</b><small>محطات الرصد والطقس الزراعي</small></div></div><div class="toolbar-actions"><span class="live-pill"><i></i> رصد مباشر</span><button class="btn primary" id="refresh">↻ تحديث</button></div></section><nav class="weather-nav"><a class="active" href="#weatherHome">الطقس الآن</a><a href="#historySection">السجل والرسوم</a><a href="#mapSection">خريطة المحطات</a><a href="#classicData">المحطات والقياسات</a></nav><div class="status"><i class="dot" id="dot"></i><span id="status">جارٍ تحميل البيانات…</span></div><section class="weather-hero" id="weatherHome"><div class="weather-main"><div class="weather-location"><span>📍</span><b id="weatherStation">اختر محطة رصد</b><small id="weatherStationId">المركز الوطني للأرصاد الجوية</small></div><div class="weather-current"><span class="weather-icon" id="weatherIcon">🌤️</span><div><strong id="weatherTemp">—°</strong><small id="weatherCondition">بانتظار أحدث قراءة</small></div></div><div class="weather-updated" id="weatherUpdated">آخر تحديث: —</div></div><div class="weather-highlights"><div><span>💧</span><small>الرطوبة</small><b id="weatherHumidity">—</b></div><div><span>🌬️</span><small>الرياح</small><b id="weatherWind">—</b></div><div><span>🌧️</span><small>الهطول</small><b id="weatherRain">—</b></div><div><span>☀️</span><small>الإشعاع</small><b id="weatherSolar">—</b></div></div></section>
@@ -205,4 +213,4 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 </section>
 <section class="panel comparison-panel"><div class="panel-heading"><div><span class="section-kicker">تحليل مقارن</span><h2>درجات الحرارة بين المحطات</h2></div></div><div id="temperatureComparison"><div class="chart-empty">جارٍ تحميل درجات الحرارة…</div></div></section></main>
 <footer class="wrap foot">المركز الوطني للأرصاد الجوية · منظومة الرصد والقياسات الجوية<br><span class="developer-credit">تطوير: ابراهيم زينب</span></footer>
-<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-22"></script></body></html>
+<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-23"></script></body></html>
