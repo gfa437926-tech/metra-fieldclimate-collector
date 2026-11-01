@@ -265,5 +265,6 @@
   }
   $("classicTabs").addEventListener("click",e=>{const b=e.target.closest("[data-kind]");if(!b)return;classicState.selected=b.dataset.kind;renderClassic();});
   $("classicSearch").addEventListener("input",renderClassic);
-\n  $("refresh").onclick=load;$("search").oninput=renderStations;load();
+
+  $("refresh").onclick=load;$("search").oninput=renderStations;load();
 })();
