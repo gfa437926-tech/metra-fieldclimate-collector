@@ -250,7 +250,7 @@
         ["الرياح",metricNumber(r,["U-sonic wind speed","Wind speed"]),"م/ث"]
       ];
       const metrics=vals.map(v=>'<div class="station-device-metric"><small>'+v[0]+'</small><b>'+(v[1]===null?"—":num(v[1]))+' '+v[2]+'</b></div>').join("");
-      const chart=isClassic?'<div class="station-device-empty">المحطة الكلاسيكية تعرض أحدث تقرير فقط؛ لا يتوفر سجل زمني في مصدرها الحالي.</div>':stationSparkline(x.history,["HC Air temperature","Air temperature"],"اتجاه درجة الحرارة");
+      const chart=isClassic?'<div class="station-device-empty">المحطة الكلاسيكية تعرض أحدث تقرير فقط؛ لا يتوفر سجل زمني في مصدرها الحالي.</div>':'<div class="station-trends"><div><small>الحرارة</small>'+stationSparkline(x.history,["HC Air temperature","Air temperature"],"اتجاه درجة الحرارة")+'</div><div><small>الرطوبة</small>'+stationSparkline(x.history,["HC Relative humidity","Relative humidity"],"اتجاه الرطوبة")+'</div><div><small>الرياح</small>'+stationSparkline(x.history,["U-sonic wind speed","Wind speed"],"اتجاه سرعة الرياح")+'</div></div>';
       const stamp=isClassic?(r?.submission_date||"—")+" · "+(r?.utc_time||"—")+" UTC":fmt(r?.recorded_at);
       const selected=isClassic?classicSelected===x.id:state.selected===x.id;
       return '<article class="station-device-card" data-selected="'+selected+'"><div class="station-device-top"><b>'+esc(x.name)+'</b><small>'+(isClassic?"محطة كلاسيكية":"FieldClimate")+'</small></div><div class="station-device-metrics">'+metrics+'</div>'+chart+'<div class="station-device-actions"><small>'+esc(stamp)+'</small><button type="button" data-device-kind="'+x.kind+'" data-device-id="'+esc(encodeURIComponent(x.id))+'">فتح الجهاز</button></div></article>';
