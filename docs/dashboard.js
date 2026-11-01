@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], classicHistory:[], locationResolved:false, map:null, markers:null, markerLayer:null};
+  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], classicHistory:[], classicHistoryStation:"", classicHistoryRequest:0, locationResolved:false, map:null, markers:null, markerLayer:null};
   const stationArabic = {
     "AFRIN  / VS":"عفرين","AL-RAI  / VS":"الراعي","Azaz":"اعزاز","Harem":"حارم",
     "IDLEB":"إدلب","Jabal al-Zawiya  / VS":"جبل الزاوية","JARABLUS / VS":"جرابلس",
@@ -372,6 +372,16 @@
     precipitation_amount:["كمية الهطول","🌧️","مم",100],cover12:["تغطية السحب 1–2","☁️","",100],cover123:["تغطية السحب 1–2–3","☁️","",100],
     pressure_slope:["ميل الضغط","📈","",10],pressure_shape:["شكل تغير الضغط","📈","",10]
   };
+  async function loadClassicStationHistory(){
+    const id=classicSelected,request=++state.classicHistoryRequest;
+    state.classicHistoryStation=id;
+    try{
+      const rows=await query("classic_public_hourly_reports",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,precipitation_amount,total_cloud_cover",station_name:"eq."+id,order:"submission_date.desc,utc_time.desc",limit:"500"});
+      if(request!==state.classicHistoryRequest||id!==classicSelected)return;
+      state.classicHistory=state.classicHistory.filter(x=>x.station_name!==id).concat(rows);
+      renderClassicStationCharts();renderAllStationDevices();
+    }catch(e){const root=$("classicStationCharts");if(root)root.innerHTML='<div class="chart-empty">تعذر تحميل السجل التاريخي: '+esc(e.message)+'</div>';}
+  }
   function renderClassicStationCharts(){
     const root=$("classicStationCharts");if(!root)return;const rows=state.classicHistory.filter(x=>x.station_name===classicSelected).slice().reverse();
     const defs=[["dry_temp","درجة الحرارة الجافة","°م"],["relative_humidity","الرطوبة النسبية","%"],["wind_speed","سرعة الرياح","م/ث"],["precipitation_amount","الهطول","مم"],["total_cloud_cover","الغطاء السحابي","أثمان"]];
@@ -380,6 +390,7 @@
   function renderClassicGauges(){
     const r=classicWeatherRows.find(x=>x.station_name===classicSelected),root=$("classicWeatherGauges");
     if(!r){root.innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
+    if(state.classicHistoryStation!==classicSelected)loadClassicStationHistory();
     $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";renderClassicStationCharts();
     const ignored=new Set(["id","station_name","submission_date","submission_time","local_time","utc_time","report_type","status","station_latitude","station_longitude","latitude","longitude","station_altitude","created_at","updated_at","user_id","user_email","user_name","user_role","report_id","observer_notes"]);
     const fields=Object.entries(r).filter(([k,v])=>!ignored.has(k)&&v!==null&&v!==undefined&&String(v).trim()!==""&&String(v).trim()!=="—");
