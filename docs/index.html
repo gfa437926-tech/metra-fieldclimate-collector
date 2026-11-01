@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#081724"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""><title>METRA | FieldClimate</title>
 <style>
-:root{color-scheme:dark;--bg:#081724;--panel:#102638;--line:#28485d;--txt:#edf6fc;--muted:#a9bdca;--mint:#54dfb5;--blue:#83c4ff}
+:root{color-scheme:dark;--bg:#07131f;--panel:#102536;--line:#29475a;--txt:#edf5fa;--muted:#9db2c0;--mint:#55d9b1;--blue:#83c4ff}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#17445a,transparent 42%),var(--bg);color:var(--txt);font-family:Tahoma,"Segoe UI",sans-serif;line-height:1.7}
 .wrap{width:min(1160px,94%);margin:auto}.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0;border-bottom:1px solid #ffffff20}.logo{font-weight:900;font-size:1.2rem}.logo span{color:var(--mint)}.tag{border:1px solid #54dfb577;border-radius:30px;padding:3px 12px;color:var(--mint);font-size:.8rem}
 .hero{padding:45px 0 25px}.eyebrow{color:var(--mint);font-weight:bold}.hero h1{font-size:clamp(2rem,5vw,3rem);line-height:1.3;margin:8px 0}.hero p{color:var(--muted);max-width:750px}.btn{font:inherit;padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:#102638;color:var(--txt);cursor:pointer}.btn.primary{background:var(--mint);color:#06251e;border-color:var(--mint);font-weight:bold}
@@ -25,14 +25,68 @@
 .chart-section{margin:16px 0}.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.chart-card{padding:12px;border:1px solid #31566b;border-radius:11px;background:#0b2230;min-width:0}.chart-card>b{display:block;font-size:.85rem}.chart-card>small{color:#a9bdca;font-size:.7rem}.chart-svg{width:100%;height:auto;display:block;margin-top:7px}.chart-grid path{stroke:#31566b;stroke-width:1;stroke-dasharray:4 4}.chart-empty{padding:20px;text-align:center;color:#a9bdca;font-size:.78rem;border:1px dashed #31566b;border-radius:9px;margin-top:8px}
 .comparison-panel{margin-top:14px}.comparison-note{color:#a9bdca;font-size:.75rem;margin-bottom:10px}.bar-row{display:grid;grid-template-columns:minmax(90px,150px) 1fr 62px;gap:9px;align-items:center;padding:5px 0;font-size:.76rem}.bar-row>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar-row>b{font-family:"Courier New";color:#70f5c4;text-align:left;direction:ltr}.bar-track{height:10px;border-radius:20px;background:#193748;overflow:hidden}.bar-track i{height:100%;display:block;border-radius:20px;background:linear-gradient(90deg,#328c91,#70f5c4)}
 .popup-latest{margin:6px 0;padding:6px;background:#0a1e2b;border-radius:7px}.popup-metrics{display:flex;flex-wrap:wrap;gap:7px;font-size:.75rem;color:#70f5c4}
+
+/* Dashboard layout refinement */
+body{background:radial-gradient(ellipse at 85% 0,#15384b 0,transparent 38%),#07131f}
+.wrap{width:min(1380px,95%)}
+.top{padding:17px 0;border-bottom-color:#29475a}
+.logo{font-size:1.12rem;letter-spacing:.2px}
+.hero.dashboard-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0 20px}
+.dashboard-toolbar h1{font-size:clamp(1.35rem,3vw,2rem);margin:2px 0 0}
+.dashboard-toolbar p{margin:3px 0 0;color:var(--muted);font-size:.88rem}
+.dashboard-toolbar .btn{min-width:150px;box-shadow:0 8px 22px #0003}
+.section-block{margin:0 0 16px}
+.section-heading,.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+.section-heading h2,.panel-heading h2{margin:0;font-size:1.02rem}
+.section-kicker{display:block;color:var(--mint);font-size:.68rem;font-weight:800;letter-spacing:.3px;margin-bottom:1px}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{position:relative;padding:13px 16px;border-radius:13px;background:#102536;border-color:#29475a;min-height:92px}
+.stat:before{content:"";position:absolute;right:0;top:14px;bottom:14px;width:3px;border-radius:4px;background:var(--mint);opacity:.8}
+.stat small{font-size:.76rem}
+.stat strong{font-size:1.55rem;margin-top:3px}
+.status{padding:8px 12px;border:1px solid #29475a;border-radius:10px;background:#0b1e2c;margin:0 0 14px;font-size:.78rem}
+.panel{padding:17px;border-radius:14px;background:#0e2231;border-color:#29475a;box-shadow:0 8px 24px #00000012}
+.map-panel{margin-top:0;margin-bottom:14px}
+.map-head{margin-bottom:10px}
+.map-head h2{font-size:1.02rem;margin:0}
+#map{height:clamp(330px,48vw,520px);border-radius:11px}
+.map-panel .hint{margin:8px 2px 0}
+.layout{grid-template-columns:minmax(250px,310px) minmax(0,1fr);gap:14px;margin-top:0;align-items:start}
+.station-panel{position:sticky;top:12px}
+.panel-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#153648;color:var(--mint);font-size:1.2rem}
+.station-list{max-height:650px;gap:6px}
+.station{padding:10px 11px;border-color:#203c4e;background:#0a1b28;transition:background .15s,border-color .15s}
+.station b{font-size:.87rem}
+.station small{font-size:.7rem;line-height:1.55;margin-top:2px}
+.station.active{background:#12384a;border-color:#55d9b1;box-shadow:inset -3px 0 var(--mint)}
+.detail-panel{min-height:520px}
+.latest-stamp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}
+.instrument-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.instrument{min-width:0}
+.instrument-value{font-size:1.18rem}
+.device-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.device{min-height:160px}
+.sensor-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sensor{padding:10px}
+.sensor-value{font-size:1.45rem}
+.chart-section{border-top:1px solid #29475a;padding-top:8px;margin-top:18px}
+.chart-section h3,.device-board h3{font-size:.94rem}
+.chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.comparison-panel{margin:14px 0 0}
+.comparison-panel .panel-heading{margin-bottom:14px}
+.bar-row{grid-template-columns:minmax(100px,170px) minmax(70px,1fr) 66px}
+.foot{padding-top:18px}
+@media(max-width:950px){.layout{grid-template-columns:260px minmax(0,1fr)}.instrument-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sensor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.layout{grid-template-columns:1fr}.station-panel{position:static}.station-list{max-height:280px}.device-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero.dashboard-toolbar{align-items:flex-start;flex-direction:column}.dashboard-toolbar .btn{width:100%}}
+@media(max-width:420px){.wrap{width:94%}.panel{padding:12px}.stats{gap:7px}.stat{padding:10px;min-height:82px}.stat strong{font-size:1.3rem}.instrument-grid,.sensor-grid{grid-template-columns:1fr 1fr}.device-grid{grid-template-columns:1fr 1fr}.bar-row{grid-template-columns:90px minmax(40px,1fr) 55px;gap:6px}}
 </style></head><body>
 <header class="top wrap"><div class="logo">METRA <span>FieldClimate</span></div></header>
-<main class="wrap"><section class="hero"><button class="btn primary" id="refresh">تحديث البيانات</button></section>
+<main class="wrap"><section class="hero dashboard-toolbar"><div><div class="eyebrow">لوحة التحكم</div><h1>مراقبة المحطات الزراعية</h1><p>نظرة موحدة على المواقع والقراءات الحديثة.</p></div><button class="btn primary" id="refresh">↻ تحديث البيانات</button></section>
 <div class="status"><i class="dot" id="dot"></i><span id="status">جارٍ تحميل البيانات…</span></div>
-<section class="stats"><div class="stat"><small>المحطات المسجلة</small><strong id="stationCount">—</strong></div><div class="stat"><small>محطات لها قياسات حديثة</small><strong id="activeCount">—</strong></div><div class="stat"><small>القياسات المعروضة</small><strong id="readingCount">—</strong></div><div class="stat"><small>آخر مزامنة للمحطات</small><strong id="lastSync" style="font-size:1rem">—</strong></div></section>
+<section class="section-block"><div class="section-heading"><div><span class="section-kicker">نظرة عامة</span><h2>حالة الشبكة</h2></div></div><section class="stats"><div class="stat"><small>المحطات المسجلة</small><strong id="stationCount">—</strong></div><div class="stat"><small>محطات لها قياسات حديثة</small><strong id="activeCount">—</strong></div><div class="stat"><small>القياسات المعروضة</small><strong id="readingCount">—</strong></div><div class="stat"><small>آخر مزامنة للمحطات</small><strong id="lastSync" style="font-size:1rem">—</strong></div></section>
 <section class="panel map-panel"><div class="map-head"><h2>الخريطة الجغرافية للمحطات</h2><small id="mapCount">جارٍ تحديد المواقع…</small></div><div id="map" role="application" aria-label="خريطة مواقع المحطات الزراعية"></div><p class="hint">اضغط على علامة المحطة لعرض اسمها وفتح قياساتها. مصدر الإحداثيات: بيانات الموقع المسجلة في FieldClimate.</p></section>
 <section class="panel comparison-panel"><h2>مقارنة درجات الحرارة بين المحطات</h2><div id="temperatureComparison"><div class="chart-empty">جارٍ تحميل درجات الحرارة…</div></div></section>
 <section class="layout"><aside class="panel"><h2>المحطات</h2><div class="field"><label for="search">بحث باسم المحطة أو المعرّف</label><input id="search" placeholder="اكتب للبحث…"></div><div class="station-list" id="stations"><div class="empty">تحميل المحطات…</div></div></aside>
-<section class="panel"><h2>أحدث سجل للمحطة</h2><div id="stationSummary" aria-live="polite"></div><section class="device-board"><h3>أجهزة القياس الرقمية</h3><div id="gaugeBoard"><div class="chart-empty">اختر محطة لعرض الأجهزة.</div></div></section><div class="reading-list" id="readings"><div class="empty">اختر محطة لعرض أحدث سجل.</div></div><section class="chart-section"><h3>مخططات آخر 24 ساعة</h3><div class="chart-grid" id="historyCharts"><div class="chart-empty">اختر محطة لعرض المخططات.</div></div></section></section></section></main>
+<section class="panel detail-panel"><div class="panel-heading"><div><span class="section-kicker">تفاصيل وقياسات</span><h2>أحدث سجل للمحطة</h2></div><span class="panel-icon">▦</span></div><div id="stationSummary" aria-live="polite"></div><section class="device-board"><h3>أجهزة القياس الرقمية</h3><div id="gaugeBoard"><div class="chart-empty">اختر محطة لعرض الأجهزة.</div></div></section><div class="reading-list" id="readings"><div class="empty">اختر محطة لعرض أحدث سجل.</div></div><section class="chart-section"><h3>مخططات آخر 24 ساعة</h3><div class="chart-grid" id="historyCharts"><div class="chart-empty">اختر محطة لعرض المخططات.</div></div></section></section></section></main>
 <footer class="wrap foot">METRA · FieldClimate Collector · مصدر القراءة: Supabase Public Views</footer>
-<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-10"></script></body></html>
+<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-11"></script></body></html>
