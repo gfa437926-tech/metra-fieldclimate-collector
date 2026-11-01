@@ -162,7 +162,36 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 .lcd,.metric-detail,.latest-stamp{background:#06121a!important;border-color:#294957;color:#8debd2}.chart-section{border-color:#263744}.chart-card,.classic-gauge,.latest-chart,.latest-bar-row{background:#0a1118;border-color:#263744}
 .airport-marker-wrap{background:transparent;border:0}.airport-marker{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#f4c45e;color:#17202a;border:2px solid #fff;box-shadow:0 1px 8px #000b;font:900 13px Arial;line-height:1}
 .device-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.device--dynamic{min-height:145px;text-align:right;background:linear-gradient(145deg,#0e202b,#071018)!important}.device-category{font-size:.68rem}.device-reading{font:900 1.55rem "Courier New",monospace;direction:ltr;text-align:right;margin:9px 0}.device-reading small{font:normal .75rem Tahoma;color:#9db7c4}.device-condition{font-size:.7rem}.device-meta{font-size:.65rem;margin-top:8px;direction:rtl}.device-total{margin-top:10px;color:#91a4b2;font-size:.75rem}.map-legend{color:#b4c4ce}.foot{color:#91a4b2}
-.developer-credit{display:inline-block;margin-top:8px;color:#77e6c7;font-weight:700;letter-spacing:.2px}\n</style></head><body>
+.developer-credit{display:inline-block;margin-top:8px;color:#77e6c7;font-weight:700;letter-spacing:.2px}\n
+/* Interactive digital instrument faces */
+.device-grid{grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:14px}
+.device.device--dynamic{display:block;min-width:0;padding:12px;border:1px solid #294957;border-radius:16px;background:linear-gradient(150deg,#10212b,#071018)!important;box-shadow:inset 0 1px #ffffff0b,0 8px 20px #0007;transition:transform .18s,border-color .18s}
+.device.device--dynamic:hover{transform:translateY(-2px);border-color:#56d8bb}
+.device-summary{display:block;cursor:pointer;list-style:none;text-align:center}
+.device-summary::-webkit-details-marker{display:none}
+.device-head{display:flex;align-items:center;justify-content:center;gap:7px;min-height:32px;font-weight:800;color:#e3f2f7}
+.device-head span{font-size:1.15rem}
+.device-category{margin:3px 0 7px;color:#91a4b2;font-size:.68rem}
+.digital-gauge{width:104px;height:104px;margin:9px auto 5px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#56d8bb 0 var(--gauge-pct,0%),#243945 var(--gauge-pct,0%) 100%);position:relative;box-shadow:0 0 18px #56d8bb18}
+.digital-gauge:before{content:"";position:absolute;inset:8px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#142a35,#071018 75%);border:1px solid #35515e}
+.gauge-core{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px;direction:ltr}
+.gauge-core b{font:900 1.05rem "Courier New",monospace;color:#8df2d5}
+.gauge-core small{font: .65rem Tahoma;color:#9ab4c0}
+.gauge-idle{background:radial-gradient(circle,#16313d 0 54%,#56d8bb 56% 59%,#243945 60%);color:#9af0d8;font-size:1.8rem}
+.digital-compass{width:104px;height:104px;margin:9px auto 5px;border-radius:50%;position:relative;display:grid;place-items:center;border:2px solid #41616e;background:repeating-conic-gradient(from 0deg,#18313d 0deg 2deg,#0a151d 2deg 30deg);box-shadow:inset 0 0 0 7px #09131a,0 0 15px #56d8bb17}
+.digital-compass>span{position:absolute;top:8px;font-size:.62rem;color:#a8c1ca;font-weight:900}
+.digital-compass i{font-style:normal;font-size:2.2rem;color:#ff756b;transform:rotate(var(--direction));text-shadow:0 0 8px #ff756b88}
+.digital-compass small{position:absolute;bottom:7px;color:#8df2d5;font:800 .72rem "Courier New",monospace}
+.device-reading{font:900 1.18rem "Courier New",monospace;color:#8df2d5;direction:ltr;text-align:center;margin:5px 0}
+.device-reading small{font:normal .7rem Tahoma;color:#9db7c4}
+.device-condition{font-size:.68rem;color:#9bb2bf;text-align:center;margin:5px 0}
+.device-meta{font-size:.63rem;color:#7895a3;text-align:center;margin-top:7px}
+.device-expanded{border-top:1px solid #29434e;margin-top:10px;padding-top:9px}
+.device[open]{border-color:#56d8bb;box-shadow:0 0 0 1px #56d8bb22,0 10px 24px #0008}
+.device-total{padding:10px 3px;color:#9db4c0;font-size:.75rem}
+@media(max-width:520px){.device-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.device.device--dynamic{padding:9px}.digital-gauge,.digital-compass{width:88px;height:88px}.gauge-core b{font-size:.9rem}.device-head{font-size:.72rem}}
+
+</style></head><body>
 <header class="top wrap"><div class="logo">المركز الوطني للأرصاد الجوية</div></header>
 <main class="wrap"><section class="app-toolbar"><div class="app-brand"><span class="brand-mark">☀</span><div><b>المركز الوطني للأرصاد الجوية</b><small>محطات الرصد والطقس الزراعي</small></div></div><div class="toolbar-actions"><span class="live-pill"><i></i> رصد مباشر</span><button class="btn primary" id="refresh">↻ تحديث</button></div></section><nav class="weather-nav"><a class="active" href="#weatherHome">الطقس الآن</a><a href="#historySection">السجل والرسوم</a><a href="#mapSection">خريطة المحطات</a><a href="#classicData">المحطات والقياسات</a></nav><div class="status"><i class="dot" id="dot"></i><span id="status">جارٍ تحميل البيانات…</span></div><section class="weather-hero" id="weatherHome"><div class="weather-main"><div class="weather-location"><span>📍</span><b id="weatherStation">اختر محطة رصد</b><small id="weatherStationId">المركز الوطني للأرصاد الجوية</small></div><div class="weather-current"><span class="weather-icon" id="weatherIcon">🌤️</span><div><strong id="weatherTemp">—°</strong><small id="weatherCondition">بانتظار أحدث قراءة</small></div></div><div class="weather-updated" id="weatherUpdated">آخر تحديث: —</div></div><div class="weather-highlights"><div><span>💧</span><small>الرطوبة</small><b id="weatherHumidity">—</b></div><div><span>🌬️</span><small>الرياح</small><b id="weatherWind">—</b></div><div><span>🌧️</span><small>الهطول</small><b id="weatherRain">—</b></div><div><span>☀️</span><small>الإشعاع</small><b id="weatherSolar">—</b></div></div></section>
 <section class="section-block"><div class="section-heading"><div><span class="section-kicker">نظرة عامة</span><h2>حالة الشبكة</h2></div></div><section class="stats"><div class="stat"><small>المحطات المسجلة</small><strong id="stationCount">—</strong></div><div class="stat"><small>محطات لها قياسات حديثة</small><strong id="activeCount">—</strong></div><div class="stat"><small>القياسات المعروضة</small><strong id="readingCount">—</strong></div><div class="stat"><small>آخر مزامنة للمحطات</small><strong id="lastSync" style="font-size:1rem">—</strong></div></section>
@@ -176,4 +205,4 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 </section>
 <section class="panel comparison-panel"><div class="panel-heading"><div><span class="section-kicker">تحليل مقارن</span><h2>درجات الحرارة بين المحطات</h2></div></div><div id="temperatureComparison"><div class="chart-empty">جارٍ تحميل درجات الحرارة…</div></div></section></main>
 <footer class="wrap foot">المركز الوطني للأرصاد الجوية · منظومة الرصد والقياسات الجوية<br><span class="developer-credit">تطوير: ابراهيم زينب</span></footer>
-<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-21"></script></body></html>
+<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-22"></script></body></html>
