@@ -1,0 +1,43 @@
+name: FieldClimate sync (manual test)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fieldclimate-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIELDCLIMATE_CLIENT_ID: ${{ secrets.FIELDCLIMATE_CLIENT_ID }}
+      FIELDCLIMATE_CLIENT_SECRET: ${{ secrets.FIELDCLIMATE_CLIENT_SECRET }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SYNC_GROUPS: hourly,daily
+      SYNC_LOOKBACK_DAYS: "30"
+      SYNC_INTERVAL_SECONDS: "900"
+    steps:
+      - name: Check required secrets
+        shell: bash
+        run: |
+          test -n "$FIELDCLIMATE_CLIENT_ID" || (echo "Missing FIELDCLIMATE_CLIENT_ID secret"; exit 1)
+          test -n "$FIELDCLIMATE_CLIENT_SECRET" || (echo "Missing FIELDCLIMATE_CLIENT_SECRET secret"; exit 1)
+          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret"; exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret"; exit 1)
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run one synchronization
+        run: python -c "import asyncio; from app.sync import sync_once; asyncio.run(sync_once())"
