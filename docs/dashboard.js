@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], map:null, markers:null, markerLayer:null};
+  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], classicHistory:[], locationResolved:false, map:null, markers:null, markerLayer:null};
   const stationArabic = {
     "AFRIN  / VS":"عفرين","AL-RAI  / VS":"الراعي","Azaz":"اعزاز","Harem":"حارم",
     "IDLEB":"إدلب","Jabal al-Zawiya  / VS":"جبل الزاوية","JARABLUS / VS":"جرابلس",
@@ -234,10 +234,17 @@
     const xy=pts.map((x,i)=>[p+i*(w-2*p)/(pts.length-1),h-p-(x.v-lo)/span*(h-2*p)]);
     return '<svg class="station-device-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(label)+'"><path d="M'+p+' '+(h-p)+'H'+(w-p)+'" stroke="#294957" fill="none"/><polyline points="'+xy.map(x=>x.join(",")).join(" ")+'" fill="none" stroke="#56d8bb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
+  function stationClassicSparkline(rows,label){
+    const keys=["dry_temp","relative_humidity","wind_speed"],series=keys.map(k=>rows.map(r=>cwVal(r[k])).filter(v=>v!==null)),values=series.flat();
+    if(values.length<2)return '<div class="station-device-empty">لا تتوفر نقاط تاريخية كافية للرسم بعد</div>';
+    const w=320,h=82,p=8,lo=Math.min(...values),hi=Math.max(...values),span=hi-lo||1,colors=["#56d8bb","#69b8ef","#f2b85c"];
+    const lines=series.map((vals,j)=>{if(vals.length<2)return "";const pts=vals.map((v,i)=>[p+i*(w-2*p)/(vals.length-1),h-p-(v-lo)/span*(h-2*p)]);return '<polyline points="'+pts.map(x=>x.join(",")).join(" ")+'" fill="none" stroke="'+colors[j]+'" stroke-width="2.2"/>';}).join("");
+    return '<svg class="station-device-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(label)+'">'+lines+'</svg><small class="muted">الحرارة · الرطوبة · الرياح</small>';
+  }
   function renderAllStationDevices(){
     const root=$("allStationDevices");if(!root)return;
     const auto=state.stations.map(s=>({kind:"automated",id:s.station_id,name:stationLabel(s),row:state.latestByStation.get(s.station_id),history:state.networkHistory.filter(r=>r.station_id===s.station_id)}));
-    const classic=classicWeatherRows.map(r=>({kind:"classic",id:r.station_name,name:cwName(r),row:r,history:[]}));
+    const classic=classicWeatherRows.map(r=>({kind:"classic",id:r.station_name,name:cwName(r),row:r,history:state.classicHistory.filter(h=>h.station_name===r.station_name)}));
     const cards=auto.concat(classic);
     if(!cards.length){root.innerHTML='<div class="station-device-empty">لا توجد محطات متاحة حالياً.</div>';return;}
     root.innerHTML=cards.map(x=>{
@@ -250,7 +257,7 @@
         ["الرياح",metricNumber(r,["U-sonic wind speed","Wind speed"]),"م/ث"]
       ];
       const metrics=vals.map(v=>'<div class="station-device-metric"><small>'+v[0]+'</small><b>'+(v[1]===null?"—":num(v[1]))+' '+v[2]+'</b></div>').join("");
-      const chart=isClassic?'<div class="station-device-empty">المحطة الكلاسيكية تعرض أحدث تقرير فقط؛ لا يتوفر سجل زمني في مصدرها الحالي.</div>':'<div class="station-trends"><div><small>الحرارة</small>'+stationSparkline(x.history,["HC Air temperature","Air temperature"],"اتجاه درجة الحرارة")+'</div><div><small>الرطوبة</small>'+stationSparkline(x.history,["HC Relative humidity","Relative humidity"],"اتجاه الرطوبة")+'</div><div><small>الرياح</small>'+stationSparkline(x.history,["U-sonic wind speed","Wind speed"],"اتجاه سرعة الرياح")+'</div></div>';
+      const chart=isClassic?stationClassicSparkline(x.history,"اتجاه القراءات الكلاسيكية") :'<div class="station-trends"><div><small>الحرارة</small>'+stationSparkline(x.history,["HC Air temperature","Air temperature"],"اتجاه درجة الحرارة")+'</div><div><small>الرطوبة</small>'+stationSparkline(x.history,["HC Relative humidity","Relative humidity"],"اتجاه الرطوبة")+'</div><div><small>الرياح</small>'+stationSparkline(x.history,["U-sonic wind speed","Wind speed"],"اتجاه سرعة الرياح")+'</div></div>';
       const stamp=isClassic?(r?.submission_date||"—")+" · "+(r?.utc_time||"—")+" UTC":fmt(r?.recorded_at);
       const selected=isClassic?classicSelected===x.id:state.selected===x.id;
       return '<article class="station-device-card" data-selected="'+selected+'"><div class="station-device-top"><b>'+esc(x.name)+'</b><small>'+(isClassic?"محطة كلاسيكية":"FieldClimate")+'</small></div><div class="station-device-metrics">'+metrics+'</div>'+chart+'<div class="station-device-actions"><small>'+esc(stamp)+'</small><button type="button" data-device-kind="'+x.kind+'" data-device-id="'+esc(encodeURIComponent(x.id))+'">فتح الجهاز</button></div></article>';
@@ -304,6 +311,21 @@
       status("تعذر تحميل القياسات: "+e.message,"err");
     }
   }
+  function distanceKm(a,b,c,d){const rad=x=>x*Math.PI/180,R=6371,dl=rad(c-a),dn=rad(d-b),q=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
+  function selectNearestVisitorStation(){
+    if(state.locationResolved||!navigator.geolocation)return;state.locationResolved=true;
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const {latitude:lat,longitude:lon}=pos.coords,candidates=[];
+      state.stations.forEach(s=>{const a=Number(s.latitude),b=Number(s.longitude);if(Number.isFinite(a)&&Number.isFinite(b))candidates.push({kind:"automated",id:s.station_id,name:stationLabel(s),distance:distanceKm(lat,lon,a,b)});});
+      classicWeatherRows.forEach(r=>{const a=cwVal(r.latitude),b=cwVal(r.longitude);if(a!==null&&b!==null)candidates.push({kind:"classic",id:r.station_name,name:cwName(r),distance:distanceKm(lat,lon,a,b)});});
+      candidates.sort((a,b)=>a.distance-b.distance);const nearest=candidates[0];
+      if(!nearest){status("لا تتوفر إحداثيات كافية لاختيار أقرب محطة؛ يمكنك الاختيار يدوياً.");return;}
+      if(nearest.kind==="automated")selectStation(nearest.id,true);
+      else{classicSelected=nearest.id;state.selected="";$("automatedStationDetails").hidden=true;$("classicUnifiedDetails").hidden=false;$("detailStationTitle").textContent=nearest.name;$("detailStationSource").textContent="أقرب محطة كلاسيكية · أحدث تقرير متاح";renderClassicGauges();renderStations();}
+      $("weatherStation").textContent=nearest.name;$("weatherStationId").textContent="أقرب محطة إلى موقع الزائر · "+nearest.distance.toFixed(1)+" كم";
+      $("historySection")?.scrollIntoView({behavior:"smooth",block:"start"});renderAllStationDevices();
+    },()=>status("لم يسمح المتصفح بتحديد الموقع؛ يمكنك اختيار المحطة يدوياً."),{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+  }
   async function load(){
     $("refresh").disabled=true;status("جارٍ تحميل آخر سجل لكل محطة والبيانات الزمنية…");
     try{
@@ -320,7 +342,7 @@
       renderStations();renderMap();renderTemperatureComparison();
       const since=new Date(Date.now()-24*60*60*1000).toISOString();
       try{state.networkHistory=await query("fieldclimate_public_readings",{select:"station_id,recorded_at,group_name,measurements",recorded_at:"gte."+since,order:"recorded_at.asc",limit:"10000"});}catch(_){state.networkHistory=[];}
-      await loadReadings();await loadClassicWeather();renderAllStationDevices();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
+      await loadReadings();await loadClassicWeather();renderAllStationDevices();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");selectNearestVisitorStation();
     }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
     finally{$("refresh").disabled=false;}
   }
@@ -350,10 +372,15 @@
     precipitation_amount:["كمية الهطول","🌧️","مم",100],cover12:["تغطية السحب 1–2","☁️","",100],cover123:["تغطية السحب 1–2–3","☁️","",100],
     pressure_slope:["ميل الضغط","📈","",10],pressure_shape:["شكل تغير الضغط","📈","",10]
   };
+  function renderClassicStationCharts(){
+    const root=$("classicStationCharts");if(!root)return;const rows=state.classicHistory.filter(x=>x.station_name===classicSelected).slice().reverse();
+    const defs=[["dry_temp","درجة الحرارة الجافة","°م"],["relative_humidity","الرطوبة النسبية","%"],["wind_speed","سرعة الرياح","م/ث"],["precipitation_amount","الهطول","مم"],["total_cloud_cover","الغطاء السحابي","أثمان"]];
+    root.innerHTML=defs.map(([key,title,unit])=>{const pts=rows.map(r=>({label:(r.submission_date||"")+" "+(r.utc_time||""),v:cwVal(r[key])})).filter(x=>x.v!==null);if(pts.length<2)return '<div class="chart-card"><h4>'+title+'</h4><div class="chart-empty">لا تتوفر نقاط تاريخية كافية</div></div>';const w=420,h=130,p=12,lo=Math.min(...pts.map(x=>x.v)),hi=Math.max(...pts.map(x=>x.v)),span=hi-lo||1,xy=pts.map((x,i)=>[p+i*(w-2*p)/(pts.length-1),h-p-(x.v-lo)/span*(h-2*p)]);return '<div class="chart-card"><h4>'+title+' · '+unit+'</h4><svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="'+title+'"><polyline points="'+xy.map(x=>x.join(",")).join(" ") +'" fill="none" stroke="#56d8bb" stroke-width="3"/></svg><small class="muted">'+pts.length+' قراءة · '+esc(pts[0].label)+' — '+esc(pts[pts.length-1].label)+'</small></div>';}).join("");
+  }
   function renderClassicGauges(){
     const r=classicWeatherRows.find(x=>x.station_name===classicSelected),root=$("classicWeatherGauges");
     if(!r){root.innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
-    $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";
+    $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";renderClassicStationCharts();
     const ignored=new Set(["id","station_name","submission_date","submission_time","local_time","utc_time","report_type","status","station_latitude","station_longitude","latitude","longitude","station_altitude","created_at","updated_at","user_id","user_email","user_name","user_role","report_id","observer_notes"]);
     const fields=Object.entries(r).filter(([k,v])=>!ignored.has(k)&&v!==null&&v!==undefined&&String(v).trim()!==""&&String(v).trim()!=="—");
     const iconFor=(key)=>classicFieldInfo[key]?.[1]||(/weather|sky|cloud/.test(key)?"☁️":/pressure/.test(key)?"🧭":/wind/.test(key)?"🌬️":/temp/.test(key)?"🌡️":"📟");
