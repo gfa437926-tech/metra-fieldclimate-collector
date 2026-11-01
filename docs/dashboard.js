@@ -108,13 +108,19 @@
     state.stations.forEach(s=>{
       const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
       const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
-      const popup='<div class="map-popup"><b>'+esc(label)+'</b><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
-      const marker=L.marker([lat,lon],{title:label,alt:label}).bindPopup(popup);
+      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة آلية · FieldClimate</small><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
+      const marker=L.marker([lat,lon],{title:label,alt:label,icon:stationIcon("automated")}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".map-select");if(btn)btn.onclick=()=>selectStation(s.station_id,false);});
       marker.addTo(state.markerLayer);state.markers.set(s.station_id,marker);bounds.push([lat,lon]);
     });
+    classicWeatherRows.forEach(r=>{
+      const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;
+      const label=cwName(r);
+      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة كلاسيكية</small><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span></div>';
+      L.marker([lat,lon],{title:label,icon:stationIcon("classic")}).bindPopup(popup).addTo(state.markerLayer);bounds.push([lat,lon]);
+    });
     if(bounds.length)state.map.fitBounds(bounds,{padding:[24,24],maxZoom:9});
-    $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.latestByStation.size.toLocaleString("ar")+" محطة لها سجل";
+    $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.stations.length.toLocaleString("ar")+" آلية · "+classicWeatherRows.filter(r=>cwVal(r.latitude)!==null&&cwVal(r.longitude)!==null).length.toLocaleString("ar")+" كلاسيكية";
     setTimeout(()=>state.map.invalidateSize(),100);
   }
   function metricCard(metric){
@@ -258,7 +264,7 @@
 
   let classicWeatherRows=[];
   let classicSelected="";
-  let classicMap=null,classicMarkerLayer=null;
+  const stationIcon=(kind)=>L.divIcon({className:"",html:kind==="classic"?'<div class="station-pin classic"><span>▦</span></div>':'<div class="station-pin automated">⌁</div>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-13]});
   const cwVal=v=>{if(v===null||v===undefined||String(v).trim()===""||String(v).trim()==="—")return null;const n=Number(String(v).replace(/^\+/,"").trim());return Number.isFinite(n)?n:null;};
   const cwFmt=(v,d=1)=>v===null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:d});
   const cwName=r=>r.station_name||"محطة غير مسماة";
@@ -283,18 +289,12 @@
     const defs=[["dry_temp","الحرارة الجافة","°م"],["wet_temp","الحرارة الرطبة","°م"],["relative_humidity","الرطوبة النسبية","%"],["dew_point","نقطة الندى","°م"],["wind_speed","سرعة الرياح","م/ث"],["total_cloud_cover","الغطاء السحابي","أثمان"]];
     $("classicLatestCharts").innerHTML=defs.map(([key,title,unit])=>{const vals=classicWeatherRows.map(r=>({name:cwName(r),v:cwVal(r[key])})).filter(x=>x.v!==null);const max=Math.max(1,...vals.map(x=>Math.abs(x.v)));return '<div class="latest-chart"><h4>'+title+' · '+unit+'</h4><div class="latest-bars">'+(vals.length?vals.sort((a,b)=>b.v-a.v).map(x=>'<div class="latest-bar-row"><span class="station-label" title="'+esc(x.name)+'">'+esc(x.name)+'</span><span class="bar-bg"><i style="width:'+Math.max(2,Math.abs(x.v)/max*100)+'%"></i></span><b>'+cwFmt(x.v)+'</b></div>').join(""):'<div class="muted">لا توجد قيم متاحة</div>')+'</div></div>';}).join("");
   }
-  function initClassicMap(){if(!window.L||classicMap)return;classicMap=L.map("classicMap",{scrollWheelZoom:false}).setView([34.5,38],6);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(classicMap);classicMarkerLayer=L.layerGroup().addTo(classicMap);}
-  function renderClassicMap(){
-    if(!window.L)return;initClassicMap();classicMarkerLayer.clearLayers();const bounds=[];let count=0;
-    classicWeatherRows.forEach(r=>{const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;count++;const label=cwName(r);const html='<div class="classic-map-popup"><b>'+esc(label)+'</b><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span></div>';L.marker([lat,lon],{title:label}).bindPopup(html).addTo(classicMarkerLayer);bounds.push([lat,lon]);});
-    $("classicMapCount").textContent=count+" موقعاً";if(bounds.length)classicMap.fitBounds(bounds,{padding:[22,22],maxZoom:9});else classicMap.setView([34.5,38],6);setTimeout(()=>classicMap.invalidateSize(),120);
-  }
   async function loadClassicWeather(){
     const rows=await query("classic_public_hourly_latest",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,total_cloud_cover,precipitation_amount,latitude,longitude,created_at",order:"station_name.asc",limit:"200"});
     classicWeatherRows=rows;const sel=$("classicStationSelect");sel.innerHTML=rows.map(r=>'<option value="'+esc(r.station_name)+'">'+esc(cwName(r))+'</option>').join("");
     if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
-    sel.value=classicSelected;renderClassicGauges();renderClassicLatestCharts();renderClassicMap();
-    $("classicStationSelect").onchange=e=>{classicSelected=e.target.value;renderClassicGauges();if(classicMap){const r=classicWeatherRows.find(x=>x.station_name===classicSelected),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);if(lat!==null&&lon!==null)classicMap.setView([lat,lon],10);}};
+    sel.value=classicSelected;renderClassicGauges();renderClassicLatestCharts();renderMap();
+    $("classicStationSelect").onchange=e=>{classicSelected=e.target.value;renderClassicGauges();const r=classicWeatherRows.find(x=>x.station_name===classicSelected),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);if(lat!==null&&lon!==null&&state.map)state.map.setView([lat,lon],10);};
   }
 
   $("refresh").onclick=load;$("search").oninput=renderStations;load();
