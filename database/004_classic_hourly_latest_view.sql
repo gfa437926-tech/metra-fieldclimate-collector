@@ -8,7 +8,8 @@ select distinct on (h.station_name)
   h.total_cloud_cover, h.precipitation_amount,
   coalesce(h.station_latitude, s.latitude,
     case
-      when h.station_name in ('الإدارة العامة','غير محدد','الكريم') then null
+      when h.station_name in ('الإدارة العامة','غير محدد') then null
+      when h.station_name = 'الكريم' then 35.43956
       when h.station_name = 'الحسكة' then 36.5024
       when h.station_name = 'السويداء' then 32.7090
       when h.station_name = 'القامشلي' then 37.0521
@@ -34,6 +35,7 @@ select distinct on (h.station_name)
   coalesce(h.station_longitude, s.longitude,
     case
       when h.station_name in ('الإدارة العامة','غير محدد','الكريم') then null
+      when h.station_name = 'الكريم' then 36.32943
       when h.station_name = 'الحسكة' then 40.7477
       when h.station_name = 'السويداء' then 36.5695
       when h.station_name = 'القامشلي' then 41.2314
