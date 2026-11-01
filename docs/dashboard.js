@@ -133,7 +133,7 @@
       const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
       const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
       const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة آلية · FieldClimate</small><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
-      const marker=L.marker([lat,lon],{title:label,alt:label,icon:stationIcon("automated")}).bindPopup(popup);
+      const isAirport=/مطار|airport|aerodrome/i.test(label+" "+(s.station_name||""));\n      const marker=L.marker([lat,lon],{title:label,alt:label,icon:isAirport?airportIcon():stationIcon("automated")}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".map-select");if(btn)btn.onclick=()=>selectStation(s.station_id,false);});
       marker.addTo(state.markerLayer);state.markers.set(s.station_id,marker);bounds.push([lat,lon]);
     });
@@ -141,7 +141,7 @@
       const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;
       const label=cwName(r);
       const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة كلاسيكية</small><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span><button type="button" class="map-select classic-map-select" data-classic-station="'+esc(encodeURIComponent(r.station_name))+'">فتح لوحة المحطة</button></div>';
-      const marker=L.marker([lat,lon],{title:label,icon:stationIcon("classic")}).bindPopup(popup);
+      const isAirport=/مطار|airport|aerodrome/i.test(label);\n      const marker=L.marker([lat,lon],{title:label,icon:isAirport?airportIcon():stationIcon("classic")}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".classic-map-select");if(btn)btn.onclick=()=>{const id=decodeURIComponent(btn.dataset.classicStation);classicSelected=id;state.selected="";$("automatedStationDetails").hidden=true;$("classicUnifiedDetails").hidden=false;$("detailStationTitle").textContent=label;$("detailStationSource").textContent="محطة كلاسيكية · أحدث تقرير متاح";renderStations();renderClassicGauges();$("historySection")?.scrollIntoView({behavior:"smooth",block:"start"});};});
       marker.addTo(state.markerLayer);bounds.push([lat,lon]);
     });
