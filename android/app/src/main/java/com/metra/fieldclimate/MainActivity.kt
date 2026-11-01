@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.graphics.Color
 import android.view.Gravity
 import android.view.View
+import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -17,6 +18,9 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var progress: ProgressBar
+    private var pendingGeoCallback: GeolocationPermissions.Callback? = null
+    private var pendingGeoOrigin: String? = null
+    private val locationRequestCode = 4107
 
     companion object {
         private const val DASHBOARD_URL =
@@ -53,6 +57,17 @@ class MainActivity : Activity() {
                 }
             }
             webChromeClient = object : WebChromeClient() {
+                override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+                    if (origin != "https://$DASHBOARD_HOST") { callback.invoke(origin, false, false); return }
+                    val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (fine || coarse) callback.invoke(origin, true, false)
+                    else {
+                        pendingGeoOrigin = origin
+                        pendingGeoCallback = callback
+                        requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION), locationRequestCode)
+                    }
+                }
                 override fun onProgressChanged(view: WebView, newProgress: Int) {
                     this@MainActivity.progress.progress = newProgress
                     this@MainActivity.progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
@@ -87,6 +102,17 @@ class MainActivity : Activity() {
             webView.loadUrl(DASHBOARD_URL)
         } else {
             webView.restoreState(savedInstanceState)
+        }
+    }
+
+    @Deprecated("Permission callback")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == locationRequestCode) {
+            val granted = grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }
+            pendingGeoCallback?.invoke(pendingGeoOrigin ?: "", granted, false)
+            pendingGeoCallback = null
+            pendingGeoOrigin = null
         }
     }
 
