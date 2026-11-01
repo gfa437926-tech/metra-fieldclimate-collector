@@ -204,11 +204,6 @@
   }
   async function loadReadings(){
     const request=++state.requestId;
-    if(!state.selected){state.readings=[];renderReadings();return;}
-    $("readings").innerHTML='<div class="empty">جارٍ تحميل القياسات…</div>';
-    try{
-     async function loadReadings(){
-    const request=++state.requestId;
     if(!state.selected){state.readings=[];state.history=[];renderReadings();return;}
     $("readings").innerHTML='<div class="empty">جارٍ تحميل أحدث سجل…</div>';
     try{
@@ -219,7 +214,11 @@
       state.history=await query("fieldclimate_public_readings",{select:"station_id,station_name,recorded_at,group_name,measurements",station_id:"eq."+state.selected,recorded_at:"gte."+since,order:"recorded_at.asc",limit:"1500"});
       if(request!==state.requestId)return;
       renderReadings();
-    }catch(e){if(request!==state.requestId)return;$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';status("تعذر تحميل القياسات: "+e.message,"err");}
+    }catch(e){
+      if(request!==state.requestId)return;
+      $("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';
+      status("تعذر تحميل القياسات: "+e.message,"err");
+    }
   }
   async function load(){
     $("refresh").disabled=true;status("جارٍ تحميل آخر سجل لكل محطة والبيانات الزمنية…");
