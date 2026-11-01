@@ -1,6 +1,4 @@
--- Latest submitted hourly classic report per station only.
--- Prefer coordinates recorded on the report, then the station registry, then researched settlement/airport coordinates.
--- Settlement-level coordinates are approximate; airport coordinates identify the aerodrome reference point.
+
 create or replace view public.classic_public_hourly_latest
 with (security_invoker = false)
 as
@@ -10,7 +8,7 @@ select distinct on (h.station_name)
   h.total_cloud_cover, h.precipitation_amount,
   coalesce(h.station_latitude, s.latitude,
     case
-      when h.station_name = 'الإدارة العامة' or h.station_name = 'غير محدد' then null
+      when h.station_name in ('الإدارة العامة','غير محدد','الكريم') then null
       when h.station_name = 'الحسكة' then 36.5024
       when h.station_name = 'السويداء' then 32.7090
       when h.station_name = 'القامشلي' then 37.0521
@@ -29,12 +27,13 @@ select distinct on (h.station_name)
       when h.station_name in ('محطة اللاذقية','مطار اللاذقية') then 35.40110
       when h.station_name in ('محطة حلب','مطار حلب الدولي') then 36.18056
       when h.station_name = 'محطة حمص' then 34.7500
-      when h.station_name = 'مطار دمشق الدولي' then 33.41140
+      when h.station_name in ('مطار دمشق الدولي','مطار دمشق') then 33.41140
+      when h.station_name = 'مركز بحوث الغاب' then 35.48156
       else null
     end) as latitude,
   coalesce(h.station_longitude, s.longitude,
     case
-      when h.station_name = 'الإدارة العامة' or h.station_name = 'غير محدد' then null
+      when h.station_name in ('الإدارة العامة','غير محدد','الكريم') then null
       when h.station_name = 'الحسكة' then 40.7477
       when h.station_name = 'السويداء' then 36.5695
       when h.station_name = 'القامشلي' then 41.2314
@@ -53,7 +52,8 @@ select distinct on (h.station_name)
       when h.station_name in ('محطة اللاذقية','مطار اللاذقية') then 35.94870
       when h.station_name in ('محطة حلب','مطار حلب الدولي') then 37.22417
       when h.station_name = 'محطة حمص' then 36.7170
-      when h.station_name = 'مطار دمشق الدولي' then 36.51560
+      when h.station_name in ('مطار دمشق الدولي','مطار دمشق') then 36.51560
+      when h.station_name = 'مركز بحوث الغاب' then 36.42974
       else null
     end) as longitude,
   h.station_altitude, h.created_at
