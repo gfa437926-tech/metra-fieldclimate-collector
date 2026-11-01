@@ -33,13 +33,13 @@ jobs:
         run: gradle -p android assembleDebug
 
       - name: Prepare APK filename
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk METRA-FieldClimate.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk METRA-Weather.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: METRA-FieldClimate-Android-APK
-          path: METRA-FieldClimate.apk
+          name: METRA-Weather-Android-APK
+          path: METRA-Weather.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -50,6 +50,6 @@ jobs:
           name: METRA FieldClimate Android
           target_commitish: main
           body: "Latest installable Android APK. The app loads the live FieldClimate dashboard, so website updates appear without reinstalling the app."
-          files: METRA-FieldClimate.apk
+          files: METRA-Weather.apk
           overwrite_files: true
           make_latest: true
