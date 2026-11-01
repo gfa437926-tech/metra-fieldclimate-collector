@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, map:null, markers:null};
+  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, map:null, markers:null, markerLayer:null};
   const stationArabic = {
     "AFRIN  / VS":"عفرين","AL-RAI  / VS":"الراعي","Azaz":"اعزاز","Harem":"حارم",
     "IDLEB":"إدلب","Jabal al-Zawiya  / VS":"جبل الزاوية","JARABLUS / VS":"جرابلس",
@@ -84,7 +84,7 @@
     if(!window.L || state.map)return;
     state.map=L.map("map",{scrollWheelZoom:false}).setView([35.5,37.5],7);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(state.map);
-    state.markers=L.layerGroup().addTo(state.map);
+    state.markerLayer=L.layerGroup().addTo(state.map);state.markers=new Map();
   }
   function metricByName(row,names){
     const all=row?.measurements?.values||{};
@@ -104,14 +104,14 @@
   }
   function renderMap(){
     if(!window.L)return;
-    initMap();state.markers.clearLayers();const bounds=[];
+    initMap();state.markerLayer.clearLayers();state.markers.clear();const bounds=[];
     state.stations.forEach(s=>{
       const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
       const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
       const popup='<div class="map-popup"><b>'+esc(label)+'</b><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
       const marker=L.marker([lat,lon],{title:label,alt:label}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".map-select");if(btn)btn.onclick=()=>selectStation(s.station_id,false);});
-      marker.addTo(state.markers);state.markers.set(s.station_id,marker);bounds.push([lat,lon]);
+      marker.addTo(state.markerLayer);state.markers.set(s.station_id,marker);bounds.push([lat,lon]);
     });
     if(bounds.length)state.map.fitBounds(bounds,{padding:[24,24],maxZoom:9});
     $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.latestByStation.size.toLocaleString("ar")+" محطة لها سجل";
