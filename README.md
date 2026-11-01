@@ -1,61 +1,74 @@
 # METRA FieldClimate Collector
 
-مستودع مستقل لجمع بيانات محطات **FieldClimate / METOS** ومزامنتها مع جداول FieldClimate المخصصة في مشروع Supabase الخاص بمنظومة METRA.
+مستودع مستقل لجمع بيانات محطات **FieldClimate / METOS** وتخزينها في جداول مخصصة داخل Supabase، ثم عرضها في لوحة ويب عربية عامة للقراءة فقط.
 
-> الحالة: هيكل أولي جاهز للمراجعة. لم يتم اختبار OAuth أو سحب بيانات حقيقية من حساب FieldClimate بعد.
+## البنية
 
-## المكونات
-- عامل مزامنة Python مستقل.
-- OAuth 2.0 Client Credentials.
-- جلب المحطات من `/user/stations`.
-- حفظ المحطات في `public.fieldclimate_stations` والقراءات في `public.fieldclimate`.
-- صفحة تعريفية عربية قابلة للنشر عبر GitHub Pages.
-- مثال شاشة Flutter يستهلك Backend موحداً ولا يتصل مباشرة بقاعدة البيانات.
+1. **عامل المزامنة**: Python عبر GitHub Actions، يستخدم OAuth 2.0 Client Credentials للاتصال بـ FieldClimate.
+2. **التخزين**: جدولَا `public.fieldclimate_stations` و`public.fieldclimate` داخل Supabase.
+3. **العروض العامة**: `fieldclimate_public_stations` و`fieldclimate_public_readings` تعرضان قائمة محددة من الحقول فقط.
+4. **الواجهة**: صفحة ثابتة في `docs/` منشورة عبر GitHub Pages. المتصفح يقرأ من عروض Supabase العامة فقط، ولا يتصل بـ FieldClimate API.
 
-## التشغيل
+لا يستخدم هذا المشروع جدول `public.stations` الخاص بمنظومة METRA الكلاسيكية، ولا يخلط بيانات FieldClimate معه.
+
+## الحالة التشغيلية المتحققة
+
+حتى 1 نوفمبر 2026:
+- تم التحقق من مزامنة حقيقية ناجحة عبر GitHub Actions.
+- آخر فحص لقاعدة البيانات أظهر **18,755** قراءة و**33** محطة في العرضين العامين.
+- أحدث وقت جلب مسجل في ذلك الفحص: `2026-11-01 04:32:18 UTC`.
+- اختبار صلاحيات PostgreSQL بدور `anon` أعاد البيانات من العرضين، بينما لم يمتلك هذا الدور صلاحية SELECT على جدولي التخزين الأساسيين.
+- هذه الأرقام لقطة وقت الفحص وليست ضماناً لعدد ثابت.
+
+## روابط التشغيل
+
+- لوحة الويب: https://gfa437926-tech.github.io/metra-fieldclimate-collector/
+- GitHub Actions: https://github.com/gfa437926-tech/metra-fieldclimate-collector/actions
+- إعداد Secrets: https://github.com/gfa437926-tech/metra-fieldclimate-collector/settings/secrets/actions
+
+## المزامنة التلقائية
+
+ملف `.github/workflows/fieldclimate-sync.yml` يشغل مزامنة واحدة كل 15 دقيقة، ويمكن تشغيله يدوياً من Actions.
+
+المتغيرات المطلوبة في GitHub Actions Secrets:
+- `FIELDCLIMATE_CLIENT_ID`
+- `FIELDCLIMATE_CLIENT_SECRET`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+يستخدم العامل مفتاح Service Role من بيئة GitHub Actions الخلفية فقط. **لا تضع هذا المفتاح أو بيانات OAuth في ملفات الواجهة أو GitHub Pages أو المستودع.**
+
+إعدادات المزامنة الحالية في workflow:
+- `SYNC_GROUPS=hourly,daily`
+- `SYNC_LOOKBACK_DAYS=30`
+- تكرار workflow كل 15 دقيقة.
+
+## قاعدة البيانات والصلاحيات
+
+- مخطط الجداول: `database/001_fieldclimate.sql`.
+- تعريف العرضين العامين وصلاحياتهما: `database/002_fieldclimate_public_views.sql`.
+- العرضان يعملان مع `security_invoker=false` لتمكين القراءة العامة من خلال مالك العرض.
+- تم منح `anon` و`authenticated` صلاحية SELECT على العرضين فقط، وسحب صلاحياتهما على الجدولين الأساسيين.
+- العرضان لا يكشفان حقول `raw_data` أو `metadata`.
+- لا تضف حقولاً حساسة أو بيانات خام إلى الإسقاط العام دون مراجعة أمنية.
+
+## الواجهة
+
+- `docs/index.html`: واجهة عربية RTL.
+- `docs/dashboard.js`: جلب المحطات والقياسات من العرضين العامين وعرضها.
+- تستخدم الواجهة Supabase publishable key فقط، وهو مفتاح عميل عام محدود بالصلاحيات الممنوحة في قاعدة البيانات.
+- لا تتطلب تسجيل دخول، ولا تنفذ عمليات كتابة.
+
+## التطوير المحلي
+
 1. أنشئ بيئة Python افتراضية.
 2. ثبّت المتطلبات: `pip install -r requirements.txt`.
-3. انسخ `.env.example` إلى `.env`.
-4. أدخل OAuth وSupabase credentials في متغيرات بيئة آمنة.
-5. شغّل `python -m app.sync`.
+3. جهّز متغيرات البيئة محلياً دون رفع ملف الأسرار إلى Git.
+4. شغّل مزامنة واحدة: `python -c "import asyncio; from app.sync import sync_once; asyncio.run(sync_once())"`.
 
-## متغيرات البيئة
-`FIELDCLIMATE_CLIENT_ID`, `FIELDCLIMATE_CLIENT_SECRET`, `FIELDCLIMATE_TOKEN_URL`, `FIELDCLIMATE_API_BASE`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SYNC_GROUPS`, `SYNC_LOOKBACK_DAYS`, `SYNC_INTERVAL_SECONDS`.
+## حدود النطاق
 
-**لا ترفع ملف .env أو مفاتيح OAuth/Supabase إلى GitHub.** استخدم Secrets في بيئة تشغيل العامل الخلفي، ولا تضعها في Flutter أو GitHub Pages.
-
-## قاعدة البيانات
-الملف `database/001_fieldclimate.sql` يوثق بنية الجدولين المخصصين. تم تطبيق الجدولين مسبقاً في مشروع Supabase INSERT المشار إليه في الملف. جداول المحطات الكلاسيكية لا يتم تعديلها.
-
-## Backend
-عقد API المقترح موثق في `docs/backend-contract.md`: `GET /api/v1/stations?source=all|classic|fieldclimate&search=...`. الـ endpoint الموحد غير منفذ بعد، ويحتاج إلى خدمة خلفية منفصلة.
-
-## تنبيهات
-- يلزم اشتراك FieldClimate API فعال وصلاحيات OAuth صحيحة.
-- حدود التاريخ والاستدعاءات تعتمد على باقة API.
-- محلل القراءات الحالي عام ومحافظ وليس parser مؤكداً لكل أنواع استجابات FieldClimate. اختبر عينة فعلية قبل التوسع.
-- راجع صلاحيات RLS والوصول قبل الإنتاج.
-
-## تطبيق FieldClimate العام (قراءة فقط)
-
-- شاشة Flutter الجديدة: `flutter/fieldclimate_screen.dart`.
-- تستخدم الشاشة عرضَي القراءة فقط: `fieldclimate_public_stations` و`fieldclimate_public_readings`.
-- تم إنشاء العرضين في Supabase مع منح SELECT فقط لدوري `anon` و`authenticated`. جداول المصدر `fieldclimate` و`fieldclimate_stations` تبقى محمية بـ RLS ولا تمنح صلاحية كتابة للزوار.
-- إعداد Flutter يحتاج `SUPABASE_URL` وSupabase anon/publishable key فقط. هذا المفتاح مصمم للاستخدام في العميل مع صلاحيات محدودة؛ لا تستخدم service-role key مطلقاً.
-- واجهة Flutter تعرض FieldClimate فقط ولا تستعلم من جدول `public.stations`.
-
-### تشغيل عامل المزامنة باستمرار
-
-يمكن تشغيل العامل كـ Background Worker على Render أو أي استضافة Python دائمة:
-- Build: `pip install -r requirements.txt`
-- Start: `python -m app.sync`
-- أضف المتغيرات التالية في لوحة Secrets الخاصة بمضيف العامل: `FIELDCLIMATE_CLIENT_ID`, `FIELDCLIMATE_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-- يمكن ضبط `SYNC_GROUPS=hourly,daily`, `SYNC_LOOKBACK_DAYS=30`, `SYNC_INTERVAL_SECONDS=900`.
-- لا تضف أي سر إلى GitHub Pages أو Flutter أو ملفات المستودع.
-
-### الحالة الحالية والاختبارات المطلوبة
-
-قاعدة البيانات تحتوي حالياً على صفر سجل في جدولي FieldClimate. تم تعديل عامل المزامنة ليستخدم مفتاح التعارض `station_id,recorded_at,group_name`، لكن لا يمكن اعتبار جمع البيانات جاهزاً قبل تشغيله بأسرار OAuth الفعالة والتحقق من شكل استجابة API الفعلية. يجب مراجعة parser وفق عينة حقيقية قبل الاعتماد التشغيلي.
-
-## GitHub Pages
-الصفحة في `docs/` وتُنشر عبر GitHub Actions. من Settings → Pages اختر Source: GitHub Actions إذا لم يكن مفعلاً.
+- شاشة Flutter الموجودة في `flutter/fieldclimate_screen.dart` مثال/مكوّن منفصل، وليست تطبيق Flutter متكاملاً جاهزاً للبناء؛ لا يوجد في هذا المستودع حالياً مشروع Flutter كامل.
+- عقد Backend موحد لمنظومة METRA الكلاسيكية ليس جزءاً منفذاً من هذا المشروع.
+- يجب الاستمرار في مراقبة سجلات Actions وحدود FieldClimate API وحداثة البيانات.
+- نجاح نشر GitHub Pages لا يثبت وحده أن المتصفح نجح في قراءة Supabase؛ افحص حالة الاتصال في اللوحة وأدوات المطور عند اختبار الواجهة.
