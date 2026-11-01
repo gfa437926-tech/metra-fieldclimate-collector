@@ -1,0 +1,22 @@
+services:
+  - type: worker
+    name: metra-fieldclimate-sync
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    envVars:
+      - key: FIELDCLIMATE_CLIENT_ID
+        sync: false
+      - key: FIELDCLIMATE_CLIENT_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        value: https://vktcvkwqszehgmhqjrkb.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SYNC_GROUPS
+        value: hourly,daily
+      - key: SYNC_LOOKBACK_DAYS
+        value: "30"
+      - key: SYNC_INTERVAL_SECONDS
+        value: "900"
