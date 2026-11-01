@@ -223,6 +223,70 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 .map-value-marker{background:#fff;border:2px solid #168d82;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;color:#145d58;font-size:10px;font-weight:900;box-shadow:0 2px 8px #173b5033;white-space:nowrap}
 #chartsSection .chart-hub{margin:0 0 14px}
 @media(max-width:650px){.weather-nav.dashboard-tabs{margin-left:-3%;margin-right:-3%;padding-right:3%;padding-left:3%;border-radius:0}.tab-button{padding:8px 11px;font-size:.76rem}.station-search-split{width:100%}}
+
+/* METRA refined visual system — presentation only; all data and controls remain intact */
+:root{--surface:#fff;--surface-soft:#f6fafb;--ink:#17384a;--muted-ink:#718795;--accent:#168d82;--accent-soft:#e2f3ef;--stroke:#dce8ed;--shadow:0 12px 32px rgba(24,63,82,.075)}
+body{background:radial-gradient(ellipse at 8% 0%,#e0f1f3 0,transparent 32%),linear-gradient(180deg,#f4f8fa 0%,#edf4f7 100%);color:var(--ink)}
+.wrap{width:min(1440px,95%)}
+.app-toolbar{position:relative;padding:20px 0 15px;border-bottom:1px solid #d8e5eb}
+.app-brand{gap:13px}.brand-mark{width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,#f5c969,#ee9450);box-shadow:0 7px 16px #db9c4933}
+.app-brand b{font-size:1rem}.app-brand small{letter-spacing:.15px}
+.live-pill{background:#e7f6f1;border-color:#ccebe1;color:#147d72;font-weight:800}
+.btn.primary{background:linear-gradient(135deg,#168d82,#27aa99);border:0;color:white;box-shadow:0 7px 17px #168d8230}
+.btn.primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.weather-nav.dashboard-tabs{top:0;margin-top:0;border:1px solid #dce8ed;border-top:0;border-radius:0 0 16px 16px;padding:10px 12px;background:rgba(255,255,255,.94);box-shadow:0 8px 25px #24485b12}
+.tab-button{transition:background .18s,border-color .18s,transform .18s}
+.tab-button:hover{transform:translateY(-1px);background:#eaf5f4}
+.tab-button.active{background:linear-gradient(135deg,#e3f4f0,#d6eee8);border-color:#a8d9ce;color:#10796f}
+.station-search-split{margin-top:3px;margin-bottom:13px}
+.station-search-split>button{background:#fff;border-color:#d6e4e9;box-shadow:0 3px 12px #24485b0a}
+#stationSearchAction{font-weight:800}
+.station-search-menu{border-color:#dce8ed;box-shadow:0 18px 40px #173b5020}
+.station-quick-results button:hover{background:#eaf5f3;border-color:#b7ded5}
+.status{box-shadow:0 3px 12px #24485b08}
+.weather-hero{border:1px solid #3c9eaa;background:linear-gradient(120deg,#155c76 0%,#248b96 55%,#61b5a9 100%);box-shadow:0 14px 34px #247f8d27;border-radius:22px;padding:24px 28px}
+.weather-hero:after{border-color:#ffffff2b}
+.weather-location b{font-size:1.35rem}
+.weather-current{margin-top:18px}.weather-icon{filter:drop-shadow(0 4px 5px #123d4b55)}
+.weather-highlights>div{backdrop-filter:blur(5px);transition:background .2s,transform .2s}
+.weather-highlights>div:hover{background:#ffffff26;transform:translateY(-2px)}
+.stats{gap:12px}.stat{border-radius:16px;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s}
+.stat:hover{transform:translateY(-2px);box-shadow:0 15px 30px #20475b16}
+.stat:before{border-radius:0 5px 5px 0}
+.panel{border:1px solid #dce8ed;border-radius:18px;box-shadow:var(--shadow);padding:19px;background:rgba(255,255,255,.97)}
+.panel-heading{margin-bottom:15px}.panel-heading h2{font-size:1.1rem;letter-spacing:-.2px}
+.section-kicker{font-size:.7rem;letter-spacing:.35px}
+.panel-icon{width:39px;height:39px;border-radius:13px;background:linear-gradient(145deg,#e8f5f2,#dcefeb)}
+.station-panel{box-shadow:var(--shadow)}
+.station{border-radius:12px;padding:11px 12px;transition:all .18s}
+.station:hover{transform:translateX(-2px);border-color:#c3e3dc;background:#eff8f6}
+.station.active{background:linear-gradient(90deg,#e4f5f1,#f4faf9);border-color:#9bd4c8}
+.station-device-grid{gap:15px}
+.station-device-card{background:linear-gradient(155deg,#fff,#f4f9fa);border:1px solid #dce8ed;border-radius:17px;box-shadow:0 6px 18px #20475b0c;transition:transform .2s,box-shadow .2s,border-color .2s}
+.station-device-card:hover{transform:translateY(-3px);box-shadow:0 14px 26px #20475b15;border-color:#b7ded5}
+.station-device-card[ data-selected="true"]{border-color:#65bfae;box-shadow:0 0 0 2px #65bfae25,0 12px 25px #20475b12}
+.station-device-metric{background:#f1f7f8;border-color:#e0eaee}
+.station-device-metric b{color:#137f76}
+.station-device-actions button{background:#e6f4f0;border-color:#c9e7df;color:#147d72;transition:.18s}
+.station-device-actions button:hover{background:#d8eee8}
+.device,.sensor,.instrument,.chart-card,.classic-stat{border-radius:13px;box-shadow:0 3px 12px #20475b08}
+.device{transition:transform .18s,box-shadow .18s}.device:hover{transform:translateY(-2px);box-shadow:0 9px 20px #20475b12}
+.chart-card{padding:15px;border-color:#e0eaee;background:linear-gradient(145deg,#fff,#f7fafb)}
+.chart-card>b{font-size:.9rem;color:#24485a}
+.chart-section{border-color:#e7eef1}
+.comparison-panel,.chart-hub,.classic-panel{margin-top:0}
+.chart-hub{margin-bottom:14px}
+.map-panel{overflow:hidden}
+#map{border:1px solid #dce8ed;box-shadow:inset 0 0 0 1px #fff}
+.map-layer{font-weight:700;transition:.18s}
+.map-layer:hover{transform:translateY(-1px);border-color:#9bcfc4}
+.map-layer.active{box-shadow:0 3px 10px #168d821c}
+.map-legend{display:flex;gap:16px;flex-wrap:wrap}
+.foot{text-align:center;border-top:1px solid #dce8ed;margin-top:25px;padding-top:20px}
+.developer-credit{color:#168d82;font-weight:800}
+input:focus,select:focus{outline:3px solid #168d8224;border-color:#55b9aa}
+button:focus-visible,a:focus-visible{outline:3px solid #168d8260;outline-offset:2px}
+@media(max-width:720px){.weather-hero{padding:18px;border-radius:17px}.panel{padding:14px;border-radius:15px}.app-toolbar{gap:10px}.toolbar-actions{gap:6px}.live-pill{display:none}.weather-nav.dashboard-tabs{top:0}.weather-highlights>div{padding:9px}.weather-current{gap:10px}}
 </style></head><body>
 <header class="top wrap"><div class="logo">المركز الوطني للأرصاد الجوية</div></header>
 <main class="wrap"><section class="app-toolbar"><div class="app-brand"><span class="brand-mark">☀</span><div><b>المركز الوطني للأرصاد الجوية</b><small>محطات الرصد والطقس الزراعي</small></div></div><div class="toolbar-actions"><span class="live-pill"><i></i> رصد مباشر</span><button class="btn primary" id="refresh">↻ تحديث</button></div></section><nav class="weather-nav dashboard-tabs" id="dashboardTabs" aria-label="أقسام لوحة الأرصاد">
@@ -238,11 +302,15 @@ body{background:#030609!important;color:#edf5fa!important}.app-toolbar{border-co
 
 <section class="panel network-devices tab-section" id="networkDevices" data-tab-panel="networkDevices"><div class="panel-heading"><div><span class="section-kicker">لوحة الشبكة</span><h2>جميع المحطات كأجهزة رقمية</h2><p class="muted">كل محطة تظهر كبطاقة جهاز مستقلة مع أحدث القياسات ومخطط الاتجاه المتاح.</p></div><span class="panel-icon">▦</span></div><div id="allStationDevices" class="station-device-grid"><div class="chart-empty">جارٍ تحميل أجهزة المحطات…</div></div></section>
 <section class="layout tab-section" id="stationMeasurements" data-tab-panel="stationMeasurements"><aside class="panel station-panel"><div class="panel-heading"><div><span class="section-kicker">استعراض المواقع</span><h2>المحطات</h2></div><span class="panel-icon">⌖</span></div><div class="field"><label for="search">بحث باسم المحطة أو المعرّف</label><input id="search" placeholder="اكتب للبحث…"></div><div class="station-list" id="stations"><div class="empty">تحميل المحطات…</div></div></aside>
-<section class="panel detail-panel" id="historySection"><div class="panel-heading"><div><span class="section-kicker">لوحة موحدة للمحطة المختارة</span><h2 id="detailStationTitle">أحدث القراءات</h2><p class="muted" id="detailStationSource">اختر محطة من القائمة أو الخريطة لعرض بياناتها هنا.</p></div><span class="panel-icon">▦</span></div><div id="automatedStationDetails"><div id="stationSummary" aria-live="polite"></div><section class="device-board"><h3>أجهزة القياس الرقمية</h3><div id="gaugeBoard"><div class="chart-empty">اختر محطة آلية لعرض الأجهزة.</div></div></section><div class="reading-list" id="readings"><div class="empty">اختر محطة لعرض أحدث سجل.</div></div><section class="chart-section"><h3>مخططات آخر 24 ساعة</h3><div class="chart-grid" id="historyCharts"><div class="chart-empty">اختر محطة لعرض المخططات.</div></div></section></div><div id="classicUnifiedDetails" hidden><div id="classicWeatherStamp" class="latest-stamp">آخر تقرير: —</div><section class="chart-section"><h3>الرسوم البيانية التاريخية للمحطة</h3><div id="classicStationCharts" class="chart-grid"><div class="chart-empty">جارٍ تحميل السجل التاريخي…</div></div></section><div id="classicWeatherGauges" class="classic-gauges"><div class="chart-empty">اختر محطة كلاسيكية لعرض القياسات.</div></div></div></section></section><section class="panel classic-panel tab-section" id="classicData" data-tab-panel="chartsSection">
+<section class="panel detail-panel" id="historySection"><div class="panel-heading"><div><span class="section-kicker">لوحة موحدة للمحطة المختارة</span><h2 id="detailStationTitle">أحدث القراءات</h2><p class="muted" id="detailStationSource">اختر محطة من القائمة أو الخريطة لعرض بياناتها هنا.</p></div><span class="panel-icon">▦</span></div><div id="automatedStationDetails"><div id="stationSummary" aria-live="polite"></div><section class="device-board"><h3>أجهزة القياس الرقمية</h3><div id="gaugeBoard"><div class="chart-empty">اختر محطة آلية لعرض الأجهزة.</div></div></section><div class="reading-list" id="readings"><div class="empty">اختر محطة لعرض أحدث سجل.</div></div><section class="chart-section"><h3>مخططات آخر 24 ساعة</h3><div class="chart-grid" id="historyCharts"><div class="chart-empty">اختر محطة لعرض المخططات.</div></div></section></div><div id="classicUnifiedDetails" hidden><div id="classicWeatherStamp" class="latest-stamp">آخر تقرير: —</div><section class="chart-section"><h3>الرسوم البيانية التاريخية للمحطة</h3><div id="classicStationCharts" class="chart-grid"><div class="chart-empty">جارٍ تحميل السجل التاريخي…</div></div></section><div id="classicWeatherGauges" class="classic-gauges"><div class="chart-empty">اختر محطة كلاسيكية لعرض القياسات.</div></div></div></section></section><section class="panel chart-hub tab-section" id="chartsSection" data-tab-panel="chartsSection">
+<div class="panel-heading"><div><span class="section-kicker">استوديو المخططات</span><h2>مخططات المحطة المختارة</h2><p class="muted">مخططات الاتجاه الزمني للقراءات الآلية والكلاسيكية، مع إبقاء تفاصيل القياسات الأصلية في تبويب المحطات.</p></div><span class="panel-icon">⌁</span></div>
+<div id="chartsHub"><div class="chart-empty">اختر محطة من تبويب المحطات والقياسات لعرض مخططاتها هنا.</div></div>
+</section>
+<section class="panel classic-panel tab-section" id="classicData" data-tab-panel="chartsSection">
 <div class="panel-heading"><div><span class="section-kicker">المحطات الكلاسيكية · شبكة الرصد الوطنية</span><h2>أحدث قياسات المحطات الكلاسيكية</h2><p class="muted">يعرض أحدث تقرير معتمد لكل محطة فقط، دون سجل تاريخي أو قائمة تقارير.</p></div><span class="panel-icon">🌦️</span></div>
 <p class="muted">تُعرض تفاصيل المحطة الكلاسيكية المختارة في لوحة تفاصيل المحطة الموحدة أعلاه.</p>
 <div class="classic-latest-charts"><div class="panel-heading"><div><span class="section-kicker">مقارنة أحدث القراءات</span><h3>مخططات آخر تحديث لكل محطة</h3><p class="muted">كل عمود يمثل آخر تقرير متاح للمحطة، ولا تُعرض القراءات السابقة.</p></div></div><div id="classicLatestCharts" class="classic-latest-chart-grid"><div class="chart-empty">جارٍ إعداد المخططات…</div></div></div>
 </section>
 <section class="panel comparison-panel tab-section" id="graphsSection" data-tab-panel="graphsSection"><div class="panel-heading"><div><span class="section-kicker">تحليل مقارن</span><h2>درجات الحرارة بين المحطات</h2></div></div><div id="temperatureComparison"><div class="chart-empty">جارٍ تحميل درجات الحرارة…</div></div></section></main>
 <footer class="wrap foot">المركز الوطني للأرصاد الجوية · منظومة الرصد والقياسات الجوية<br><span class="developer-credit">تطوير: ابراهيم زينب</span></footer>
-<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261101-27"></script></body></html>
+<script>window.METRA_SUPABASE_URL="https://vktcvkwqszehgmhqjrkb.supabase.co";window.METRA_SUPABASE_KEY="sb_publishable_Qr8fr70mMBOEp-qHdxfvGw_I9qx3xud";</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script src="./dashboard.js?v=20261102-28"></script></body></html>
