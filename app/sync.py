@@ -59,12 +59,58 @@ def find_timestamp(obj:Any):
             found=find_timestamp(value)
             if found:return found
     return None
+def parse_date(value):
+    if isinstance(value, (int, float)):
+        seconds = value / 1000 if value > 10_000_000_000 else value
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc).isoformat()
+        except ValueError:
+            return None
+    return None
+
+
 def extract_records(payload):
-    records=[]
+    # Optimized FieldClimate response stores timestamps in "dates" and
+    # sensor series in "data" keyed by sensor tag.
+    if isinstance(payload, dict) and isinstance(payload.get('dates'), list) and isinstance(payload.get('data'), dict):
+        dates = payload['dates']
+        sensors = payload['data']
+        records = []
+        for index, date_value in enumerate(dates):
+            stamp = parse_date(date_value)
+            if not stamp:
+                continue
+            measurements = {}
+            for sensor_tag, sensor in sensors.items():
+                if not isinstance(sensor, dict):
+                    continue
+                aggr = sensor.get('aggr') or {}
+                sensor_values = {}
+                for aggregation, values in aggr.items():
+                    if isinstance(values, list) and index < len(values):
+                        sensor_values[aggregation] = values[index]
+                if sensor_values:
+                    measurements[sensor_tag] = {
+                        'name': sensor.get('name'),
+                        'unit': sensor.get('unit'),
+                        'values': sensor_values
+                    }
+            if measurements:
+                records.append({'recorded_at': stamp, 'measurements': measurements})
+        return records
+
+    # Fallback for normal (non-optimized) response structures.
+    records = []
     for item in as_list(payload):
-        if isinstance(item,dict):
-            stamp=find_timestamp(item)
-            if stamp:records.append({'recorded_at':stamp,'measurements':item})
+        if isinstance(item, dict):
+            stamp = find_timestamp(item)
+            if stamp:
+                records.append({'recorded_at': stamp, 'measurements': item})
     return records
 async def sync_once():
     api=FieldClimateClient(); stations_raw=await api.get('/user/stations')
@@ -75,7 +121,7 @@ async def sync_once():
         sid=station['station_id']
         for group in config.GROUPS:
             try:
-                payload=await api.get(f'/data/{sid}/{group}/from/{start}/to/{end}'); records=extract_records(payload)
+                payload=await api.get(f'/data/optimized/{sid}/{group}/from/{start}/to/{end}'); records=extract_records(payload)
                 rows=[{'station_id':sid,'station_name':station['station_name'],'recorded_at':item['recorded_at'],'group_name':group,'latitude':station['latitude'],'longitude':station['longitude'],'altitude_m':station['altitude_m'],'measurements':{'group':group,'values':item['measurements']},'raw_data':item['measurements'],'fetched_at':datetime.now(timezone.utc).isoformat()} for item in records]
                 for offset in range(0,len(rows),500):db.table('fieldclimate').upsert(rows[offset:offset+500],on_conflict='station_id,recorded_at,group_name').execute()
                 log.info('%s %s: %s records',sid,group,len(rows))
