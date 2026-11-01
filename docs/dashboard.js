@@ -19,7 +19,7 @@
   };
   const metricLabels = {avg:"المتوسط",last:"آخر قراءة",sum:"الإجمالي",result:"النتيجة",time:"المدة",value:"القيمة",min:"الأدنى",max:"الأعلى"};
   const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const stationLabel = s => stationArabic[s.station_name] || s.station_name || s.station_id;
+  const stationLabel = s => stationArabic[(s.station_name || "").trim()] || (s.station_name || s.station_id);
   const sensorLabel = s => sensorArabic[s] || s || "حساس غير مسمى";
   const fmt = v => v ? new Date(v).toLocaleString("ar",{dateStyle:"medium",timeStyle:"short"}) : "—";
   const num = v => typeof v === "number" ? v.toLocaleString("ar",{maximumFractionDigits:3}) : esc(v);
