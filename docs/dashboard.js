@@ -403,6 +403,7 @@
   async function loadClassicWeather(){
     const rows=await query("classic_public_hourly_latest_all",{select:"*",order:"station_name.asc",limit:"200"});
     classicWeatherRows=rows;
+    try{state.classicHistory=await query("classic_public_hourly_reports",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,precipitation_amount,total_cloud_cover",order:"submission_date.desc,utc_time.desc",limit:"2000"});}catch(_){state.classicHistory=[];}
     if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
     renderClassicGauges();renderClassicLatestCharts();renderStations();renderMap();renderAllStationDevices();
   }
