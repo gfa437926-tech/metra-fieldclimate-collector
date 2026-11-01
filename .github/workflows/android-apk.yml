@@ -9,7 +9,7 @@ on:
       - ".github/workflows/android-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -32,10 +32,24 @@ jobs:
       - name: Build installable debug APK
         run: gradle -p android assembleDebug
 
-      - name: Upload APK
+      - name: Prepare APK filename
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk METRA-FieldClimate.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: METRA-FieldClimate-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: METRA-FieldClimate.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish latest APK download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: METRA FieldClimate Android
+          target_commitish: main
+          body: "Latest installable Android APK. The app loads the live FieldClimate dashboard, so website updates appear without reinstalling the app."
+          files: METRA-FieldClimate.apk
+          overwrite_files: true
+          make_latest: true
