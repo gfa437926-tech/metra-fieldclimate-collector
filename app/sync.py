@@ -125,15 +125,17 @@ async def sync_once():
                 if sid == stations[0]['station_id'] and group == config.GROUPS[0]:
                     if isinstance(payload, dict):
                         sensor_map = payload.get('data')
-                        first_sensor = next(iter(sensor_map.values()), {}) if isinstance(sensor_map, dict) else {}
-                        log.info('Diagnostic payload: top_keys=%s dates_type=%s dates_count=%s data_type=%s sensor_count=%s first_sensor_keys=%s aggregation_keys=%s',
+                        first_sensor = (sensor_map[0] if isinstance(sensor_map, list) and sensor_map else
+                                        next(iter(sensor_map.values()), {}) if isinstance(sensor_map, dict) else {})
+                        log.info('Diagnostic payload: top_keys=%s dates_type=%s dates_count=%s data_type=%s data_count=%s first_item_type=%s first_item_keys=%s first_item_nested_types=%s',
                             list(payload.keys()),
                             type(payload.get('dates')).__name__,
                             len(payload.get('dates', [])) if isinstance(payload.get('dates'), list) else None,
                             type(sensor_map).__name__,
-                            len(sensor_map) if isinstance(sensor_map, dict) else None,
+                            len(sensor_map) if isinstance(sensor_map, (list, dict)) else None,
+                            type(first_sensor).__name__,
                             list(first_sensor.keys()) if isinstance(first_sensor, dict) else None,
-                            list((first_sensor.get('aggr') or {}).keys()) if isinstance(first_sensor, dict) and isinstance(first_sensor.get('aggr'), dict) else None)
+                            {key: type(value).__name__ for key, value in first_sensor.items()} if isinstance(first_sensor, dict) else None)
                     else:
                         log.info('Diagnostic payload type: %s', type(payload).__name__)
                 records=extract_records(payload)
