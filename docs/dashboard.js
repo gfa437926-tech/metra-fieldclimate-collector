@@ -73,7 +73,7 @@
       .map(s=>{
         const latest=state.latestByStation.get(s.station_id);
         const t=metricNumber(latest,["HC Air temperature","Air temperature"],["avg","last","result","value"]);
-        return '<button class="station '+(s.station_id===state.selected?'active':'')+'" data-kind="automated" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small><span class="station-result-meta automated">محطة آلية · FieldClimate</span> '+esc(s.station_id)+' · آخر سجل: '+fmt(latest?.recorded_at)+(t===null?'':' · '+num(t)+'°م')+'</small></button>';
+        return '<button class="station '+(s.station_id===state.selected?'active':'')+'" data-kind="automated" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small><span class="station-result-meta automated">محطة آلية</span> '+esc(s.station_id)+' · آخر سجل: '+fmt(latest?.recorded_at)+(t===null?'':' · '+num(t)+'°م')+'</small></button>';
       });
     const classic=classicWeatherRows
       .filter(r=>[cwName(r),r.station_name].some(v=>String(v||"").toLocaleLowerCase("ar").includes(q)))
@@ -99,7 +99,7 @@
     state.selected=id;renderStations();
     $("automatedStationDetails").hidden=false;$("classicUnifiedDetails").hidden=true;
     $("detailStationTitle").textContent=stationLabel(state.stations.find(s=>s.station_id===id)||{station_id:id});
-    $("detailStationSource").textContent="محطة آلية · FieldClimate";
+    $("detailStationSource").textContent="محطة آلية";
     loadReadings();
     if(zoom && state.markers){const marker=state.markers.get(id);if(marker){state.map.setView(marker.getLatLng(),11);marker.openPopup();}}
   }
@@ -118,7 +118,7 @@
     activate("networkDevices");
   }
   function stationSearchEntries(){
-    return state.stations.map(s=>({kind:"automated",id:s.station_id,name:stationLabel(s),sub:"محطة آلية · FieldClimate"}))
+    return state.stations.map(s=>({kind:"automated",id:s.station_id,name:stationLabel(s),sub:"محطة آلية"}))
       .concat(classicWeatherRows.map(r=>({kind:"classic",id:r.station_name,name:cwName(r),sub:"محطة كلاسيكية"})));
   }
   function renderQuickStationSearch(){
@@ -207,7 +207,7 @@
     state.stations.forEach(s=>{
       const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
       const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
-      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة آلية · FieldClimate</small><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
+      const popup='<div class="map-popup"><b>'+esc(label)+'</b><small>محطة آلية</small><br><small>'+esc(s.station_id)+'</small><br><small>الارتفاع: '+(s.altitude_m==null?'—':num(Number(s.altitude_m))+' م')+'</small><div class="popup-latest">'+latestBrief(row)+'</div><button type="button" class="map-select" data-station="'+esc(s.station_id)+'">فتح لوحة المحطة</button></div>';
       const isAirport=/مطار|airport|aerodrome/i.test(label+" "+(s.station_name||""));
       const marker=L.marker([lat,lon],{title:label,alt:label,icon:isAirport?airportIcon():stationIcon("automated")}).bindPopup(popup);
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".map-select");if(btn)btn.onclick=()=>selectStation(s.station_id,false);});
@@ -342,7 +342,7 @@
       const chart=isClassic?stationClassicSparkline(x.history,"اتجاه القراءات الكلاسيكية") :'<div class="station-trends"><div><small>الحرارة</small>'+stationSparkline(x.history,["HC Air temperature","Air temperature"],"اتجاه درجة الحرارة")+'</div><div><small>الرطوبة</small>'+stationSparkline(x.history,["HC Relative humidity","Relative humidity"],"اتجاه الرطوبة")+'</div><div><small>الرياح</small>'+stationSparkline(x.history,["U-sonic wind speed","Wind speed"],"اتجاه سرعة الرياح")+'</div></div>';
       const stamp=isClassic?(r?.submission_date||"—")+" · "+(r?.utc_time||"—")+" UTC":fmt(r?.recorded_at);
       const selected=isClassic?classicSelected===x.id:state.selected===x.id;
-      return '<article class="station-device-card" data-selected="'+selected+'"><div class="station-device-top"><b>'+esc(x.name)+'</b><small>'+(isClassic?"محطة كلاسيكية":"FieldClimate")+'</small></div><div class="station-device-metrics">'+metrics+'</div>'+chart+'<div class="station-device-actions"><small>'+esc(stamp)+'</small><button type="button" data-device-kind="'+x.kind+'" data-device-id="'+esc(encodeURIComponent(x.id))+'">فتح الجهاز</button></div></article>';
+      return '<article class="station-device-card" data-selected="'+selected+'"><div class="station-device-top"><b>'+esc(x.name)+'</b><small>'+(isClassic?"محطة كلاسيكية":"محطة آلية")+'</small></div><div class="station-device-metrics">'+metrics+'</div>'+chart+'<div class="station-device-actions"><small>'+esc(stamp)+'</small><button type="button" data-device-kind="'+x.kind+'" data-device-id="'+esc(encodeURIComponent(x.id))+'">فتح الجهاز</button></div></article>';
     }).join("");
     root.querySelectorAll("button[data-device-kind]").forEach(b=>b.onclick=()=>{
       const id=decodeURIComponent(b.dataset.deviceId);
@@ -440,7 +440,7 @@
         renderStations();renderAllStationDevices();
       }
       renderAllStationDevices();
-      status(partialErrors.length?"تم تحميل الأجهزة مع تعذر تحميل بعض التفاصيل: "+partialErrors.join(" · "):"متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
+      status(partialErrors.length?"تم تحميل الأجهزة مع تعذر تحميل بعض التفاصيل: "+partialErrors.join(" · "):"متصل · بيانات المحطات الآلية والتقارير الكلاسيكية جاهزة","ok");
       selectNearestVisitorStation();
     }catch(e){
       renderAllStationDevices();
