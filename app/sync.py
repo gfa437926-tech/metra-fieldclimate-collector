@@ -75,9 +75,10 @@ def parse_date(value):
 
 
 def extract_records(payload):
-    # Optimized FieldClimate response stores timestamps in "dates" and
-    # sensor series in "data" keyed by sensor tag.
-    if isinstance(payload, dict) and isinstance(payload.get('dates'), list) and isinstance(payload.get('data'), dict):
+    # FieldClimate grouped response: dates is a timestamp array and data is
+    # a list of sensor descriptors. Each sensor's "values" maps aggregation
+    # names (for example avg) to arrays aligned by index with dates.
+    if isinstance(payload, dict) and isinstance(payload.get('dates'), list) and isinstance(payload.get('data'), list):
         dates = payload['dates']
         sensors = payload['data']
         records = []
@@ -86,25 +87,34 @@ def extract_records(payload):
             if not stamp:
                 continue
             measurements = {}
-            for sensor_tag, sensor in sensors.items():
+            for sensor in sensors:
                 if not isinstance(sensor, dict):
                     continue
-                aggr = sensor.get('aggr') or {}
+                series = sensor.get('values')
+                if not isinstance(series, dict) or not series:
+                    series = sensor.get('aggr')
+                if not isinstance(series, dict):
+                    continue
                 sensor_values = {}
-                for aggregation, values in aggr.items():
+                for aggregation, values in series.items():
                     if isinstance(values, list) and index < len(values):
-                        sensor_values[aggregation] = values[index]
+                        value = values[index]
+                        if value is not None:
+                            sensor_values[str(aggregation)] = value
                 if sensor_values:
-                    measurements[sensor_tag] = {
+                    sensor_key = str(sensor.get('code') or sensor.get('name') or sensor.get('ch') or 'sensor')
+                    measurements[sensor_key] = {
                         'name': sensor.get('name'),
                         'unit': sensor.get('unit'),
+                        'code': sensor.get('code'),
+                        'channel': sensor.get('ch'),
                         'values': sensor_values
                     }
             if measurements:
                 records.append({'recorded_at': stamp, 'measurements': measurements})
         return records
 
-    # Fallback for normal (non-optimized) response structures.
+    # Fallback for normal (non-grouped) response structures.
     records = []
     for item in as_list(payload):
         if isinstance(item, dict):
