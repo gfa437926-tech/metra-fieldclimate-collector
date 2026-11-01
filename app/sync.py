@@ -61,8 +61,8 @@ async def sync_once():
         for group in config.GROUPS:
             try:
                 payload=await api.get(f'/data/{sid}/{group}/from/{start}/to/{end}'); records=extract_records(payload)
-                rows=[{'station_id':sid,'station_name':station['station_name'],'recorded_at':item['recorded_at'],'latitude':station['latitude'],'longitude':station['longitude'],'altitude_m':station['altitude_m'],'measurements':{'group':group,'values':item['measurements']},'raw_data':item['measurements'],'fetched_at':datetime.now(timezone.utc).isoformat()} for item in records]
-                for offset in range(0,len(rows),500):db.table('fieldclimate').upsert(rows[offset:offset+500],on_conflict='station_id,recorded_at').execute()
+                rows=[{'station_id':sid,'station_name':station['station_name'],'recorded_at':item['recorded_at'],'group_name':group,'latitude':station['latitude'],'longitude':station['longitude'],'altitude_m':station['altitude_m'],'measurements':{'group':group,'values':item['measurements']},'raw_data':item['measurements'],'fetched_at':datetime.now(timezone.utc).isoformat()} for item in records]
+                for offset in range(0,len(rows),500):db.table('fieldclimate').upsert(rows[offset:offset+500],on_conflict='station_id,recorded_at,group_name').execute()
                 log.info('%s %s: %s records',sid,group,len(rows))
             except Exception:log.exception('Sync failed station=%s group=%s',sid,group)
 async def main():
