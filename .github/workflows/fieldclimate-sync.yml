@@ -2,6 +2,8 @@ name: FieldClimate sync (manual test)
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
 
 permissions:
   contents: read
