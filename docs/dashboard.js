@@ -196,8 +196,16 @@
     const max=Math.max(...rows.map(x=>x.v)),min=Math.min(...rows.map(x=>x.v));
     root.innerHTML='<div class="comparison-note">مقارنة أحدث درجة حرارة متاحة لكل محطة · '+rows.length+' محطة · '+num(min)+' إلى '+num(max)+' °C</div>'+rows.map(x=>'<div class="bar-row"><span>'+esc(x.name)+'</span><div class="bar-track"><i style="width:'+Math.max(2,(x.v-min)/(max-min||1)*100)+'%"></i></div><b>'+num(x.v)+'°</b></div>').join("");
   }
+  function renderWeatherHero(){
+    const row=state.readings[0],station=state.stations.find(s=>s.station_id===state.selected);
+    const put=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+    put("weatherStation",station?stationLabel(station):"اختر محطة رصد");put("weatherStationId",station?station.station_id:"METRA · FIELD STATION");
+    if(!row){put("weatherTemp","—°");put("weatherCondition","لا توجد قراءة متاحة حالياً");put("weatherHumidity","—");put("weatherWind","—");put("weatherRain","—");put("weatherSolar","—");put("weatherUpdated","آخر تحديث: —");return;}
+    const t=metricNumber(row,["HC Air temperature","Air temperature"]),rh=metricNumber(row,["HC Relative humidity","Relative humidity"]),wind=metricNumber(row,["U-sonic wind speed","Wind speed"]),rain=metricNumber(row,["Precipitation"],["sum","last","avg"]),solar=metricNumber(row,["Solar radiation"],["avg","last"]);
+    put("weatherTemp",t===null?"—°":num(t)+"°");put("weatherCondition",t===null?"قراءات الطقس للمحطة المختارة":t>=35?"أجواء حارة":t>=25?"أجواء دافئة":t>=15?"أجواء معتدلة":t>=5?"أجواء باردة":"أجواء شديدة البرودة");put("weatherIcon",t===null?"🌤️":t>=32?"☀️":t<=5?"🌧️":"🌤️");put("weatherHumidity",rh===null?"—":num(rh)+"%");put("weatherWind",wind===null?"—":num(wind)+" م/ث");put("weatherRain",rain===null?"—":num(rain)+" مم");put("weatherSolar",solar===null?"—":num(solar)+" W/m²");put("weatherUpdated","آخر قراءة: "+fmt(row.recorded_at));
+  }
   function renderReadings(){
-    renderSummary();renderHistory();
+    renderWeatherHero();renderSummary();renderHistory();
     const row=state.readings[0];
     $("readings").innerHTML=row?'<article class="reading"><div class="reading-head"><b>'+fmt(row.recorded_at)+'</b><span class="muted">'+(row.group_name==="hourly"?"أحدث سجل ساعي":"أحدث سجل يومي")+'</span></div><div class="sensor-grid">'+Object.entries(row.measurements?.values||{}).map(([key,m])=>metricCard({...m,code:m.code??key})).join("")+'</div></article>':'<div class="empty">لا توجد قياسات مسجلة لهذه المحطة.</div>';
     $("readingCount").textContent=(row?1:0).toLocaleString("ar");
