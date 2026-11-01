@@ -67,14 +67,31 @@
     return r.json();
   }
   function renderStations(){
-    const q=$("search").value.trim().toLowerCase();
-    const list=state.stations.filter(s=>stationLabel(s).toLowerCase().includes(q)||(s.station_name||"").toLowerCase().includes(q)||(s.station_id||"").toLowerCase().includes(q));
-    $("stations").innerHTML=list.length?list.map(s=>{
-      const latest=state.latestByStation.get(s.station_id);
-      const t=metricNumber(latest,["HC Air temperature","Air temperature"],["avg","last","result","value"]);
-      return '<button class="station '+(s.station_id===state.selected?'active':'')+'" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small>'+esc(s.station_id)+' · آخر سجل: '+fmt(latest?.recorded_at)+(t===null?'':' · '+num(t)+'°C')+'</small></button>';
-    }).join(""):'<div class="empty">لا توجد نتائج</div>';
-    document.querySelectorAll(".station").forEach(b=>b.onclick=()=>selectStation(decodeURIComponent(b.dataset.id),true));
+    const q=($("search").value||"").trim().toLocaleLowerCase("ar");
+    const automated=state.stations
+      .filter(s=>[stationLabel(s),s.station_name,s.station_id].some(v=>String(v||"").toLocaleLowerCase("ar").includes(q)))
+      .map(s=>{
+        const latest=state.latestByStation.get(s.station_id);
+        const t=metricNumber(latest,["HC Air temperature","Air temperature"],["avg","last","result","value"]);
+        return '<button class="station '+(s.station_id===state.selected?'active':'')+'" data-kind="automated" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small><span class="station-result-meta automated">محطة آلية · FieldClimate</span> '+esc(s.station_id)+' · آخر سجل: '+fmt(latest?.recorded_at)+(t===null?'':' · '+num(t)+'°م')+'</small></button>';
+      });
+    const classic=classicWeatherRows
+      .filter(r=>[cwName(r),r.station_name].some(v=>String(v||"").toLocaleLowerCase("ar").includes(q)))
+      .map(r=>'<button class="station '+(r.station_name===classicSelected?'active':'')+'" data-kind="classic" data-id="'+esc(encodeURIComponent(r.station_name))+'"><b>'+esc(cwName(r))+'</b><small><span class="station-result-meta classic">محطة كلاسيكية</span> آخر تقرير: '+esc(r.submission_date||"—")+' · '+esc(r.utc_time||"—")+' UTC</small></button>');
+    const results=automated.concat(classic);
+    $("stations").innerHTML=results.length?results.join(""):'<div class="empty">لا توجد محطات مطابقة في المصادر الكلاسيكية أو الآلية.</div>';
+    document.querySelectorAll(".station[data-kind]").forEach(b=>b.onclick=()=>{
+      const id=decodeURIComponent(b.dataset.id);
+      if(b.dataset.kind==="automated") selectStation(id,true);
+      else {
+        classicSelected=id;
+        const sel=$("classicStationSelect");if(sel)sel.value=id;
+        renderStations();renderClassicGauges();
+        const r=classicWeatherRows.find(x=>x.station_name===id),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);
+        if(lat!==null&&lon!==null&&state.map)state.map.setView([lat,lon],10);
+        $("classicData")?.scrollIntoView({behavior:"smooth",block:"start"});
+      }
+    });
   }
   function selectStation(id,zoom){
     state.selected=id;renderStations();loadReadings();
@@ -293,8 +310,8 @@
     const rows=await query("classic_public_hourly_latest",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,total_cloud_cover,precipitation_amount,latitude,longitude,created_at",order:"station_name.asc",limit:"200"});
     classicWeatherRows=rows;const sel=$("classicStationSelect");sel.innerHTML=rows.map(r=>'<option value="'+esc(r.station_name)+'">'+esc(cwName(r))+'</option>').join("");
     if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
-    sel.value=classicSelected;renderClassicGauges();renderClassicLatestCharts();renderMap();
-    $("classicStationSelect").onchange=e=>{classicSelected=e.target.value;renderClassicGauges();const r=classicWeatherRows.find(x=>x.station_name===classicSelected),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);if(lat!==null&&lon!==null&&state.map)state.map.setView([lat,lon],10);};
+    sel.value=classicSelected;renderClassicGauges();renderClassicLatestCharts();renderStations();renderMap();
+    $("classicStationSelect").onchange=e=>{classicSelected=e.target.value;renderClassicGauges();renderStations();const r=classicWeatherRows.find(x=>x.station_name===classicSelected),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);if(lat!==null&&lon!==null&&state.map)state.map.setView([lat,lon],10);};
   }
 
   $("refresh").onclick=load;$("search").oninput=renderStations;load();
