@@ -37,7 +37,12 @@ def station_id_of(item):
     return str(value).strip() if value not in (None, '') else ''
 def station_payload(item):
     coords=item.get('coordinates') or item.get('location') or {}; coords=coords if isinstance(coords,dict) else {}
-    return {'station_id':station_id_of(item),'station_name':(station_name_parts(item)[1] or first_value(item,('custom_name','station_name','description')) or station_name_parts(item)[0]),'latitude':first_value(coords,('latitude','lat')) or first_value(item,('latitude','lat')),'longitude':first_value(coords,('longitude','lon','lng')) or first_value(item,('longitude','lon','lng')),'altitude_m':first_value(coords,('altitude','altitude_m')) or first_value(item,('altitude','altitude_m')),'metadata':item,'last_synced_at':datetime.now(timezone.utc).isoformat()}
+    position=item.get('position') or {}; position=position if isinstance(position,dict) else {}
+    geo=position.get('geo') or {}; geo=geo if isinstance(geo,dict) else {}
+    point=geo.get('coordinates') or []
+    geo_lon=point[0] if isinstance(point,list) and len(point)>1 else None
+    geo_lat=point[1] if isinstance(point,list) and len(point)>1 else None
+    return {'station_id':station_id_of(item),'station_name':(station_name_parts(item)[1] or first_value(item,('custom_name','station_name','description')) or station_name_parts(item)[0]),'latitude':first_value(coords,('latitude','lat')) or first_value(item,('latitude','lat')) or geo_lat,'longitude':first_value(coords,('longitude','lon','lng')) or first_value(item,('longitude','lon','lng')) or geo_lon,'altitude_m':first_value(coords,('altitude','altitude_m')) or first_value(item,('altitude','altitude_m')) or position.get('altitude'),'metadata':item,'last_synced_at':datetime.now(timezone.utc).isoformat()}
 def find_timestamp(obj:Any):
     if isinstance(obj,dict):
         for key in ('recorded_at','timestamp','date','time','datetime','dt'):
