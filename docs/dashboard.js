@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], classicHistory:[], classicHistoryStation:"", classicHistoryRequest:0, locationResolved:false, map:null, markers:null, markerLayer:null};
+  const state = {stations:[], selected:"", readings:[], history:[], latestByStation:new Map(), requestId:0, networkHistory:[], classicHistory:[], classicHistoryStation:"", classicHistoryRequest:0, locationResolved:false, map:null, markers:null, markerLayer:null, overlayLayer:null, activeMapLayer:"stations"};
   const stationArabic = {
     "AFRIN  / VS":"عفرين","AL-RAI  / VS":"الراعي","Azaz":"اعزاز","Harem":"حارم",
     "IDLEB":"إدلب","Jabal al-Zawiya  / VS":"جبل الزاوية","JARABLUS / VS":"جرابلس",
@@ -103,11 +103,86 @@
     loadReadings();
     if(zoom && state.markers){const marker=state.markers.get(id);if(marker){state.map.setView(marker.getLatLng(),11);marker.openPopup();}}
   }
+
+  function setupDashboardTabs(){
+    const buttons=[...document.querySelectorAll(".tab-button[data-tab]")];
+    const panels=[...document.querySelectorAll("[data-tab-panel]")];
+    function activate(id){
+      buttons.forEach(b=>b.classList.toggle("active",b.dataset.tab===id));
+      panels.forEach(p=>p.hidden=p.dataset.tabPanel!==id);
+      if(id==="mapSection"&&state.map)setTimeout(()=>state.map.invalidateSize(),120);
+      if(id==="chartsSection")renderChartsHub();
+      try{localStorage.setItem("metra-active-tab",id);}catch(_){}
+    }
+    buttons.forEach(b=>b.addEventListener("click",()=>activate(b.dataset.tab)));
+    activate("networkDevices");
+  }
+  function stationSearchEntries(){
+    return state.stations.map(s=>({kind:"automated",id:s.station_id,name:stationLabel(s),sub:"محطة آلية · FieldClimate"}))
+      .concat(classicWeatherRows.map(r=>({kind:"classic",id:r.station_name,name:cwName(r),sub:"محطة كلاسيكية"})));
+  }
+  function renderQuickStationSearch(){
+    const root=$("stationQuickResults");if(!root)return;
+    const q=($("stationQuickSearch")?.value||"").trim().toLocaleLowerCase("ar");
+    const rows=stationSearchEntries().filter(x=>(x.name+" "+x.id).toLocaleLowerCase("ar").includes(q)).slice(0,100);
+    root.innerHTML=rows.map(x=>'<button type="button" data-quick-kind="'+x.kind+'" data-quick-id="'+esc(encodeURIComponent(x.id))+'">'+esc(x.name)+'<small>'+x.sub+' · '+esc(x.id)+'</small></button>').join("")||'<div class="empty">لا توجد محطة مطابقة.</div>';
+    root.querySelectorAll("button[data-quick-kind]").forEach(b=>b.onclick=()=>{
+      const id=decodeURIComponent(b.dataset.quickId);
+      if(b.dataset.quickKind==="automated")selectStation(id,true);
+      else{classicSelected=id;state.selected="";$("automatedStationDetails").hidden=true;$("classicUnifiedDetails").hidden=false;$("detailStationTitle").textContent=cwName(classicWeatherRows.find(r=>r.station_name===id)||{station_name:id});$("detailStationSource").textContent="محطة كلاسيكية · أحدث تقرير متاح";renderClassicGauges();renderStations();}
+      $("stationSearchMenu").hidden=true;
+      document.querySelector('[data-tab="stationMeasurements"]')?.click();
+      $("historySection")?.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  }
+  function setupStationSearch(){
+    $("stationSearchAction")?.addEventListener("click",()=>{$("stationSearchMenu").hidden=false;$("stationQuickSearch").focus();renderQuickStationSearch();});
+    $("stationSearchToggle")?.addEventListener("click",()=>{$("stationSearchMenu").hidden=!$("stationSearchMenu").hidden;if(!$("stationSearchMenu").hidden){renderQuickStationSearch();$("stationQuickSearch").focus();}});
+    $("stationQuickSearch")?.addEventListener("input",renderQuickStationSearch);
+    document.addEventListener("click",e=>{if(!$("stationSearchSplit")?.contains(e.target))$("stationSearchMenu").hidden=true;});
+  }
+  function renderChartsHub(){
+    const root=$("chartsHub");if(!root)return;
+    const history=$("historyCharts"),classic=$("classicLatestCharts");
+    root.innerHTML='<div class="chart-section"><h3>المحطة المختارة · آخر 24 ساعة</h3>'+(history?.innerHTML||'<div class="chart-empty">اختر محطة لعرض المخططات.</div>')+'</div><div class="chart-section"><h3>مقارنة مخططات أحدث تقارير المحطات الكلاسيكية</h3>'+(classic?.innerHTML||'<div class="chart-empty">لا توجد مخططات متاحة.</div>')+'</div>';
+  }
+  function setupMapLayers(){
+    const root=$("mapLayerToolbar");if(!root)return;
+    root.querySelectorAll("[data-layer]").forEach(b=>b.addEventListener("click",()=>{
+      state.activeMapLayer=b.dataset.layer;
+      root.querySelectorAll("[data-layer]").forEach(x=>x.classList.toggle("active",x===b));
+      renderMap();
+    }));
+  }
+  function windDirection(row,kind){
+    if(kind==="classic")return cwVal(row?.wind_direction);
+    return metricNumber(row,["Wind direction","U-sonic wind dir","Wind orientation"],["last","avg","result","value"]);
+  }
+  function mapMetric(row,kind,metric){
+    if(kind==="classic"){
+      const key={temperature:"dry_temp",humidity:"relative_humidity",rain:"precipitation_amount"}[metric];
+      return cwVal(row?.[key]);
+    }
+    const names={temperature:["HC Air temperature","Air temperature"],humidity:["HC Relative humidity","Relative humidity"],rain:["Precipitation"]}[metric];
+    return metricNumber(row,names,metric==="rain"?["sum","last","avg","result"]:["last","avg","result","value"]);
+  }
+  function addMapOverlayPoint(lat,lon,value,label,metric){
+    if(value===null||!Number.isFinite(value))return;
+    if(metric==="wind"){
+      const icon=L.divIcon({className:"wind-arrow-marker",html:'<span style="--bearing:'+value+'deg">➤</span>',iconSize:[34,34],iconAnchor:[17,17]});
+      L.marker([lat,lon],{icon,keyboard:false,interactive:true,title:label+" · اتجاه الرياح "+Math.round(value)+"°"}).bindTooltip(label+" · "+Math.round(value)+"°").addTo(state.overlayLayer);
+    }else{
+      const suffix=metric==="temperature"?"°":metric==="humidity"?"%":" مم";
+      const color=metric==="temperature"?"#e66a43":metric==="humidity"?"#258fbd":"#318b62";
+      L.circleMarker([lat,lon],{radius:9,color,weight:2,fillColor:color,fillOpacity:.22}).bindTooltip(label+" · "+num(value)+suffix).addTo(state.overlayLayer);
+      L.marker([lat,lon],{icon:L.divIcon({className:"",html:'<div class="map-value-marker" style="border-color:'+color+'">'+esc(num(value))+suffix+'</div>',iconSize:[38,38],iconAnchor:[19,19]}),interactive:false}).addTo(state.overlayLayer);
+    }
+  }
   function initMap(){
     if(!window.L || state.map)return;
     state.map=L.map("map",{scrollWheelZoom:false}).setView([35.5,37.5],7);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(state.map);
-    state.markerLayer=L.layerGroup().addTo(state.map);state.markers=new Map();
+    state.markerLayer=L.layerGroup().addTo(state.map);state.overlayLayer=L.layerGroup().addTo(state.map);state.markers=new Map();
   }
   function metricByName(row,names){
     const all=row?.measurements?.values||{};
@@ -128,7 +203,7 @@
   function airportIcon(){return L.divIcon({className:"airport-marker-wrap",html:'<span class="airport-marker" title="مطار" aria-label="مطار">✈</span>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-10]});}
   function renderMap(){
     if(!window.L)return;
-    initMap();state.markerLayer.clearLayers();state.markers.clear();const bounds=[];
+    initMap();state.markerLayer.clearLayers();state.overlayLayer.clearLayers();state.markers.clear();const bounds=[];
     state.stations.forEach(s=>{
       const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
       const label=stationLabel(s),row=state.latestByStation.get(s.station_id);
@@ -147,6 +222,13 @@
       marker.on("popupopen",e=>{const btn=e.popup.getElement().querySelector(".classic-map-select");if(btn)btn.onclick=()=>{const id=decodeURIComponent(btn.dataset.classicStation);classicSelected=id;state.selected="";$("automatedStationDetails").hidden=true;$("classicUnifiedDetails").hidden=false;$("detailStationTitle").textContent=label;$("detailStationSource").textContent="محطة كلاسيكية · أحدث تقرير متاح";renderStations();renderClassicGauges();$("historySection")?.scrollIntoView({behavior:"smooth",block:"start"});};});
       marker.addTo(state.markerLayer);bounds.push([lat,lon]);
     });
+
+    if(state.activeMapLayer!=="stations"){
+      const metric=state.activeMapLayer;
+      state.stations.forEach(s=>{const lat=Number(s.latitude),lon=Number(s.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;const row=state.latestByStation.get(s.station_id),v=metric==="wind"?windDirection(row,"automated"):mapMetric(row,"automated",metric);addMapOverlayPoint(lat,lon,v,stationLabel(s),metric);});
+      classicWeatherRows.forEach(r=>{const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;const v=metric==="wind"?windDirection(r,"classic"):mapMetric(r,"classic",metric);addMapOverlayPoint(lat,lon,v,cwName(r),metric);});
+      state.map.removeLayer(state.markerLayer);state.overlayLayer.addTo(state.map);
+    }else{state.map.removeLayer(state.overlayLayer);state.markerLayer.addTo(state.map);}
     if(bounds.length)state.map.fitBounds(bounds,{padding:[24,24],maxZoom:9});
     $("mapCount").textContent=bounds.length.toLocaleString("ar")+" موقعاً · "+state.stations.length.toLocaleString("ar")+" آلية · "+classicWeatherRows.filter(r=>cwVal(r.latitude)!==null&&cwVal(r.longitude)!==null).length.toLocaleString("ar")+" كلاسيكية";
     setTimeout(()=>state.map.invalidateSize(),100);
@@ -436,8 +518,8 @@
     classicWeatherRows=rows;
     try{state.classicHistory=await query("classic_public_hourly_reports",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,precipitation_amount,total_cloud_cover",order:"submission_date.desc,utc_time.desc",limit:"2000"});}catch(_){state.classicHistory=[];}
     if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
-    renderClassicGauges();renderClassicLatestCharts();renderStations();renderMap();renderAllStationDevices();
+    renderClassicGauges();renderClassicLatestCharts();renderStations();renderMap();renderAllStationDevices();renderQuickStationSearch();renderQuickStationSearch();renderChartsHub();
   }
 
-  $("refresh").onclick=load;$("search").oninput=renderStations;load();
+  $("refresh").onclick=load;$("search").oninput=renderStations;setupDashboardTabs();setupStationSearch();setupMapLayers();load();
 })();
