@@ -36,5 +36,26 @@
 - محلل القراءات الحالي عام ومحافظ وليس parser مؤكداً لكل أنواع استجابات FieldClimate. اختبر عينة فعلية قبل التوسع.
 - راجع صلاحيات RLS والوصول قبل الإنتاج.
 
+## تطبيق FieldClimate العام (قراءة فقط)
+
+- شاشة Flutter الجديدة: `flutter/fieldclimate_screen.dart`.
+- تستخدم الشاشة عرضَي القراءة فقط: `fieldclimate_public_stations` و`fieldclimate_public_readings`.
+- تم إنشاء العرضين في Supabase مع منح SELECT فقط لدوري `anon` و`authenticated`. جداول المصدر `fieldclimate` و`fieldclimate_stations` تبقى محمية بـ RLS ولا تمنح صلاحية كتابة للزوار.
+- إعداد Flutter يحتاج `SUPABASE_URL` وSupabase anon/publishable key فقط. هذا المفتاح مصمم للاستخدام في العميل مع صلاحيات محدودة؛ لا تستخدم service-role key مطلقاً.
+- واجهة Flutter تعرض FieldClimate فقط ولا تستعلم من جدول `public.stations`.
+
+### تشغيل عامل المزامنة باستمرار
+
+يمكن تشغيل العامل كـ Background Worker على Render أو أي استضافة Python دائمة:
+- Build: `pip install -r requirements.txt`
+- Start: `python -m app.sync`
+- أضف المتغيرات التالية في لوحة Secrets الخاصة بمضيف العامل: `FIELDCLIMATE_CLIENT_ID`, `FIELDCLIMATE_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- يمكن ضبط `SYNC_GROUPS=hourly,daily`, `SYNC_LOOKBACK_DAYS=30`, `SYNC_INTERVAL_SECONDS=900`.
+- لا تضف أي سر إلى GitHub Pages أو Flutter أو ملفات المستودع.
+
+### الحالة الحالية والاختبارات المطلوبة
+
+قاعدة البيانات تحتوي حالياً على صفر سجل في جدولي FieldClimate. تم تعديل عامل المزامنة ليستخدم مفتاح التعارض `station_id,recorded_at,group_name`، لكن لا يمكن اعتبار جمع البيانات جاهزاً قبل تشغيله بأسرار OAuth الفعالة والتحقق من شكل استجابة API الفعلية. يجب مراجعة parser وفق عينة حقيقية قبل الاعتماد التشغيلي.
+
 ## GitHub Pages
 الصفحة في `docs/` وتُنشر عبر GitHub Actions. من Settings → Pages اختر Source: GitHub Actions إذا لم يكن مفعلاً.
