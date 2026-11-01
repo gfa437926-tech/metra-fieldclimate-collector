@@ -173,7 +173,7 @@
     const w=640,h=190,pad=28,min=Math.min(...vals.map(p=>p.v)),max=Math.max(...vals.map(p=>p.v)),span=max-min||1;
     const xy=vals.map((p,i)=>[pad+i*(w-2*pad)/(vals.length-1),h-pad-(p.v-min)/span*(h-2*pad)]);
     const poly=xy.map(p=>p.join(",")).join(" ");
-    return '<svg class="chart-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(label)+' خلال آخر 24 ساعة"><path class="chart-grid" d="M'+pad+' '+pad+'H'+(w-pad)+' M'+pad+' '+(h/2)+'H'+(w-pad)+' M'+pad+' '+(h-pad)+'H'+(w-pad)+'"/><polyline points="'+poly+'" fill="none" stroke="#62e8bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+xy.filter((p,i)=>i===0||i===xy.length-1).map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="#a5f5db"/>').join("")+'<text x="'+pad+'" y="17" fill="#a9bdca" font-size="12">'+num(max)+' '+esc(unit)+'</text><text x="'+pad+'" y="'+(h-5)+'" fill="#a9bdca" font-size="12">'+num(min)+' '+esc(unit)+'</text></svg>';
+    return '<svg class="chart-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+esc(label)+' خلال آخر 24 ساعة"><path class="chart-guides" stroke="#31566b" stroke-width="1" stroke-dasharray="4 4" fill="none" d="M'+pad+' '+pad+'H'+(w-pad)+' M'+pad+' '+(h/2)+'H'+(w-pad)+' M'+pad+' '+(h-pad)+'H'+(w-pad)+'"/><polyline points="'+poly+'" fill="none" stroke="#62e8bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+xy.filter((p,i)=>i===0||i===xy.length-1).map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="#a5f5db"/>').join("")+'<text x="'+pad+'" y="17" fill="#a9bdca" font-size="12">'+num(max)+' '+esc(unit)+'</text><text x="'+pad+'" y="'+(h-5)+'" fill="#a9bdca" font-size="12">'+num(min)+' '+esc(unit)+'</text></svg>';
   }
   function renderHistory(){
     const root=$("historyCharts");if(!root)return;
