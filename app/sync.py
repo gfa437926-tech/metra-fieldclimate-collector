@@ -121,7 +121,22 @@ async def sync_once():
         sid=station['station_id']
         for group in config.GROUPS:
             try:
-                payload=await api.get(f'/data/optimized/{sid}/{group}/from/{start}/to/{end}'); records=extract_records(payload)
+                payload=await api.get(f'/data/optimized/{sid}/{group}/from/{start}/to/{end}')
+                if sid == stations[0]['station_id'] and group == config.GROUPS[0]:
+                    if isinstance(payload, dict):
+                        sensor_map = payload.get('data')
+                        first_sensor = next(iter(sensor_map.values()), {}) if isinstance(sensor_map, dict) else {}
+                        log.info('Diagnostic payload: top_keys=%s dates_type=%s dates_count=%s data_type=%s sensor_count=%s first_sensor_keys=%s aggregation_keys=%s',
+                            list(payload.keys()),
+                            type(payload.get('dates')).__name__,
+                            len(payload.get('dates', [])) if isinstance(payload.get('dates'), list) else None,
+                            type(sensor_map).__name__,
+                            len(sensor_map) if isinstance(sensor_map, dict) else None,
+                            list(first_sensor.keys()) if isinstance(first_sensor, dict) else None,
+                            list((first_sensor.get('aggr') or {}).keys()) if isinstance(first_sensor, dict) and isinstance(first_sensor.get('aggr'), dict) else None)
+                    else:
+                        log.info('Diagnostic payload type: %s', type(payload).__name__)
+                records=extract_records(payload)
                 rows=[{'station_id':sid,'station_name':station['station_name'],'recorded_at':item['recorded_at'],'group_name':group,'latitude':station['latitude'],'longitude':station['longitude'],'altitude_m':station['altitude_m'],'measurements':{'group':group,'values':item['measurements']},'raw_data':item['measurements'],'fetched_at':datetime.now(timezone.utc).isoformat()} for item in records]
                 for offset in range(0,len(rows),500):db.table('fieldclimate').upsert(rows[offset:offset+500],on_conflict='station_id,recorded_at,group_name').execute()
                 log.info('%s %s: %s records',sid,group,len(rows))
