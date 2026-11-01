@@ -106,7 +106,44 @@
     const category=sensorInfo[metric.name]?.category || "قياس إضافي";
     return '<div class="sensor"><div class="sensor-name">'+esc(sensorLabel(metric.name))+'</div><div class="sensor-category">'+esc(category)+'</div><div class="lcd"><span class="sensor-value">'+num(main)+'</span><small>'+unit+'</small></div><div class="sensor-meta">القناة: '+esc(metric.channel??"—")+' · الرمز: '+esc(metric.code??"—")+'</div>'+(details?'<div class="metric-details">'+details+'</div>':"")+'</div>';
   }
+  const summaryMetrics = [
+    {keys:["Air temperature","HC Air temperature"],label:"درجة حرارة الهواء",icon:"🌡️"},
+    {keys:["Relative humidity","HC Relative humidity"],label:"الرطوبة النسبية",icon:"💧"},
+    {keys:["Precipitation"],label:"الهطول المطري",icon:"🌧️"},
+    {keys:["Wind speed","U-sonic wind speed"],label:"سرعة الرياح",icon:"🌬️"},
+    {keys:["Wind direction","U-sonic wind dir","Wind orientation"],label:"اتجاه الرياح",icon:"🧭"},
+    {keys:["Solar radiation"],label:"الإشعاع الشمسي",icon:"☀️"},
+    {keys:["Soil temperature","Soil temperature 2","Soil temperature 6","Soil temperature 9"],label:"حرارة التربة",icon:"🌱"},
+    {keys:["EAG Soil moisture 6","EAG Soil moisture 9","PI-Profile Soil Moisture 6"],label:"رطوبة التربة",icon:"🌿"}
+  ];
+  function renderSummary(){
+    const root=$("stationSummary");if(!root)return;
+    const found={};
+    for(const reading of state.readings){
+      const metrics=reading.measurements?.values;
+      if(!metrics||typeof metrics!=="object")continue;
+      for(const spec of summaryMetrics){
+        if(found[spec.label])continue;
+        for(const key of spec.keys){
+          const metric=metrics[key];if(!metric)continue;
+          const vals=metric.values&&typeof metric.values==="object"?metric.values:{};
+          const mainKey=["last","avg","sum","result","value","min","max"].find(k=>vals[k]!==null&&vals[k]!==undefined);
+          const value=mainKey?vals[mainKey]:null;
+          if(value===null||value===undefined||typeof value==="object")continue;
+          found[spec.label]={...spec,value,unit:metric.unit||"",at:reading.recorded_at};
+          break;
+        }
+      }
+      if(Object.keys(found).length===summaryMetrics.length)break;
+    }
+    const cards=summaryMetrics.filter(x=>found[x.label]).map(x=>{
+      const m=found[x.label];
+      return '<div class="summary-card"><div class="summary-label"><span>'+m.icon+'</span>'+esc(m.label)+'</div><div class="summary-value">'+num(m.value)+' <small>'+esc(m.unit)+'</small></div><div class="summary-time">آخر قياس: '+fmt(m.at)+'</div></div>';
+    }).join("");
+    root.innerHTML=cards?'<div class="summary-grid">'+cards+'</div>':'<div class="summary-empty">لا تتوفر مؤشرات ملخصة لهذه المحطة في السجلات المحمّلة.</div>';
+  }
   function renderReadings(){
+    renderSummary();
     $("readings").innerHTML=state.readings.length?state.readings.map(r=>{
       const raw=r.measurements&&r.measurements.values&&typeof r.measurements.values==="object"?r.measurements.values:{};
       const cards=Object.entries(raw).map(([key,m])=>metricCard({...m,code:m.code??key})).join("");
