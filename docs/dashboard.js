@@ -125,7 +125,7 @@
     const details=entries.filter(([k])=>k!==mainKey).map(([k,v])=>'<span class="metric-detail"><small>'+esc(metricLabels[k]||k)+'</small><b>'+num(v)+'</b></span>').join("");
     const unit=metric.unit&&metric.unit!==false?" "+esc(metric.unit):"";
     const category=sensorInfo[metric.name]?.category || "قياس إضافي";
-    return '<div class="sensor"><div class="sensor-name">'+esc(sensorLabel(metric.name))+'</div><div class="sensor-category">'+esc(category)+'</div><div class="lcd"><span class="sensor-value">'+num(main)+'</span><small>'+unit+'</small></div><div class="sensor-meta">القناة: '+esc(metric.channel??"—")+' · الرمز: '+esc(metric.code??"—")+'</div>'+(details?'<div class="metric-details">'+details+'</div>':"")+'</div>';
+    const n=String(metric.name||"").toLowerCase();const kind=/temperature|dew point/.test(n)?"temperature":/humidity|moisture/.test(n)?"humidity":/wind/.test(n)?"wind":/precipitation|rain/.test(n)?"rain":/solar|radiation|sunshine/.test(n)?"solar":/soil/.test(n)?"soil":"standard";return '<div class="sensor sensor--'+kind+'"><div class="sensor-name">'+esc(sensorLabel(metric.name))+'</div><div class="sensor-category">'+esc(category)+'</div><div class="lcd"><span class="sensor-value">'+num(main)+'</span><small>'+unit+'</small></div><div class="sensor-meta">القناة: '+esc(metric.channel??"—")+' · الرمز: '+esc(metric.code??"—")+'</div>'+(details?'<div class="metric-details">'+details+'</div>':"")+'</div>';
   }
   const summaryMetrics = [
     {keys:["Air temperature","HC Air temperature"],label:"درجة حرارة الهواء",icon:"🌡️"},
@@ -164,9 +164,19 @@
     const hum=metricNumber(row,["HC Relative humidity","Relative humidity"]);
     const rain=metricNumber(row,["Precipitation"],["sum","last","avg"]);
     const solar=metricNumber(row,["Solar radiation"],["avg","last"]);
+    const cloud=metricNumber(row,["Cloud cover","Total cloud cover"]);
     const compass=dir===null?'<div class="gauge-empty">لا توجد قراءة اتجاه</div>':'<div class="compass"><span class="north">ش</span><span class="east">ق</span><span class="south">ج</span><span class="west">غ</span><i style="transform:rotate('+dir+'deg)"></i><b>🧭</b></div><strong>'+num(dir)+'°</strong>';
-    const gauge=(label,icon,value,unit,max)=>'<div class="device"><div class="device-head"><span>'+icon+'</span>'+label+'</div><div class="dial" style="--pct:'+Math.max(0,Math.min(100,(value??0)/max*100))+'%"><div class="dial-inner"><b>'+(value===null?"—":num(value))+'</b><small>'+unit+'</small></div></div></div>';
-    root.innerHTML='<div class="device-grid"><div class="device"><div class="device-head">🧭 بوصلة اتجاه الرياح</div>'+compass+'</div>'+gauge("سرعة الرياح","🌬️",speed,"م/ث",30)+gauge("درجة حرارة الهواء","🌡️",temp,"°C",50)+gauge("الرطوبة النسبية","💧",hum,"% ",100)+gauge("الهطول المطري","🌧️",rain,"mm",50)+gauge("الإشعاع الشمسي","☀️",solar,"W/m²",1200)+'</div>';
+    const dial=(value,unit,max)=>'<div class="dial" style="--pct:'+Math.max(0,Math.min(100,(value??0)/max*100))+'%"><div class="dial-inner"><b>'+(value===null?"—":num(value))+'</b><small>'+unit+'</small></div></div>';
+    const bars='<div class="device-bars">'+[28,52,38,76,44,62,32,85,48].map((v,i)=>'<i style="height:'+v+'%"></i>').join("")+'</div>';
+    const spark='<svg class="device-spark" viewBox="0 0 180 34" aria-hidden="true"><path d="M0 27 C20 24 25 7 45 13 S70 31 91 18 S124 4 140 16 S164 26 180 8" fill="none" stroke="#e7ad36" stroke-width="3" stroke-linecap="round"/><path d="M0 34 L0 27 C20 24 25 7 45 13 S70 31 91 18 S124 4 140 16 S164 26 180 8 L180 34Z" fill="#f9df9a" opacity=".5"/></svg>';
+    root.innerHTML='<div class="device-grid">'+
+      '<div class="device device--temperature"><div class="device-head">🌡️ درجة حرارة الهواء</div><div class="device-reading">'+(temp===null?"—":num(temp))+' <small>°م</small></div><div class="device-condition">'+(temp===null?"لا توجد قراءة":temp>=35?"حار":temp>=25?"دافئ":temp>=15?"معتدل":"بارد")+'</div></div>'+
+      '<div class="device device--humidity"><div class="device-head">💧 الرطوبة النسبية</div>'+dial(hum,"%",100)+'</div>'+
+      '<div class="device device--wind"><div class="device-head">🧭 اتجاه الرياح</div>'+compass+'<div class="device-condition">سرعة '+(speed===null?"—":num(speed)+" م/ث")+'</div></div>'+
+      '<div class="device device--cloud"><div class="device-head">☁️ حالة الغطاء السحابي</div><div class="device-reading">'+(cloud===null?"—":num(cloud))+' <small>أثمان</small></div><div class="device-condition">'+(cloud===null?"لا توجد قراءة":cloud<=2?"سماء صافية":cloud<=5?"غيوم متفرقة":"غائم")+'</div></div>'+
+      '<div class="device device--solar"><div class="device-head">☀️ الإشعاع الشمسي</div><div class="device-reading">'+(solar===null?"—":num(solar))+' <small>W/m²</small></div>'+spark+'</div>'+
+      '<div class="device device--rain"><div class="device-head">🌧️ الهطول المطري</div><div class="device-reading">'+(rain===null?"—":num(rain))+' <small>mm</small></div>'+bars+'</div>'+
+    '</div>';
   }
   function chartSvg(points,label,unit){
     const vals=points.filter(p=>p.v!==null);if(vals.length<2)return '<div class="chart-empty">لا توجد نقاط كافية خلال آخر 24 ساعة</div>';
@@ -266,7 +276,7 @@
     const r=classicWeatherRows.find(x=>x.station_name===classicSelected);
     if(!r){$("classicWeatherGauges").innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
     $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";
-    $("classicWeatherGauges").innerHTML=cwMetrics.map(m=>{const v=cwVal(r[m.key]),pct=v===null?0:Math.max(0,Math.min(100,Math.abs(v)/m.max*100));return '<div class="classic-gauge"><span class="g-icon">'+m.icon+'</span><span class="g-label">'+m.label+'</span><strong class="g-value">'+cwFmt(v)+'</strong><span class="g-unit">'+m.unit+'</span><div class="g-track"><i style="width:'+pct+'%"></i></div></div>';}).join("");
+    $("classicWeatherGauges").innerHTML=cwMetrics.map(m=>{const v=cwVal(r[m.key]),pct=v===null?0:Math.max(0,Math.min(100,Math.abs(v)/m.max*100));return '<div class="classic-gauge classic-gauge--'+m.key+'"><span class="g-icon">'+m.icon+'</span><span class="g-label">'+m.label+'</span><strong class="g-value">'+cwFmt(v)+'</strong><span class="g-unit">'+m.unit+'</span><div class="g-track"><i style="width:'+pct+'%"></i></div></div>';}).join("");
     const sel=$("classicStationSelect");if(sel.value!==classicSelected)sel.value=classicSelected;
   }
   function renderClassicLatestCharts(){
