@@ -241,38 +241,51 @@
       $("activeCount").textContent=fresh.length.toLocaleString("ar");
       $("lastSync").textContent=fmt(stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
       if(!stations.some(x=>x.station_id===state.selected))state.selected=stations[0]?.station_id||"";
-      renderStations();renderMap();renderTemperatureComparison();await loadReadings();await loadClassic();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
+      renderStations();renderMap();renderTemperatureComparison();await loadReadings();await loadClassicWeather();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
     }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
     finally{$("refresh").disabled=false;}
   }
 
-  const classicDefs={
-    hourly:{view:"classic_public_hourly_reports",order:"created_at",title:"التقارير الساعية",cols:[["station_name","المحطة"],["submission_date","التاريخ"],["submission_time","وقت الإدخال"],["dry_temp","الحرارة الجافة °م"],["wet_temp","الحرارة الرطبة °م"],["relative_humidity","الرطوبة %"],["wind_speed","سرعة الرياح"],["wind_direction","اتجاه الرياح"],["precipitation_amount","الهطول"]] },
-    daily:{view:"classic_public_daily_reports",order:"created_at",title:"التقارير اليومية",cols:[["station","المحطة"],["report_date","التاريخ"],["report_period","الفترة"],["min_temperature","الصغرى °م"],["max_temperature","العظمى °م"],["precipitation","الهطول"],["snow_thickness","سماكة الثلج"],["sunshine_duration","سطوع الشمس"]] },
-    soil:{view:"classic_public_soil_temperatures",order:"submitted_at",title:"حرارة التربة",cols:[["station","المحطة"],["observation_date","تاريخ الرصد"],["utc_time","التوقيت العالمي"],["soil_temp_5cm","عمق 5 سم °م"],["soil_temp_10cm","عمق 10 سم °م"],["soil_temp_20cm","عمق 20 سم °م"],["soil_temp_50cm","عمق 50 سم °م"]] },
-    phenomena:{view:"classic_public_weather_phenomena",order:"created_at",title:"الظواهر الجوية",cols:[["station_name","المحطة"],["phenomenon_date","التاريخ"],["phenomenon_type","الظاهرة"],["start_time","وقت البداية"],["end_time","وقت النهاية"],["phenomenon_duration","المدة"],["phenomenon_status","الحالة"]] },
-    climate:{view:"classic_public_climate_reports",order:"submitted_at",title:"التقارير المناخية",cols:[["station","المحطة"],["report_date","التاريخ"],["utc_time","التوقيت العالمي"],["dry_temperature","الحرارة الجافة °م"],["wet_temperature","الحرارة الرطبة °م"],["relative_humidity","الرطوبة %"],["dew_point","نقطة الندى °م"],["wind_speed","سرعة الرياح"],["wind_direction","اتجاه الرياح"],["total_cloud_cover","الغطاء السحابي"]] }
-  };
-  const classicState={data:{},selected:"hourly"};
-  const classicVal=v=>v===null||v===undefined||v===""?"—":String(v);
-  function renderClassic(){
-    const def=classicDefs[classicState.selected],rows=classicState.data[classicState.selected]||[],q=$("classicSearch").value.trim().toLowerCase();
-    const filtered=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));
-    $("classicMeta").textContent=def.title+" · "+filtered.length.toLocaleString("ar")+" من "+rows.length.toLocaleString("ar")+" سجل محمّل";
-    $("classicTableWrap").innerHTML=filtered.length?'<table class="classic-table"><thead><tr>'+def.cols.map(c=>'<th>'+c[1]+'</th>').join("")+'</tr></thead><tbody>'+filtered.map(r=>'<tr>'+def.cols.map(c=>'<td class="'+(/temp|humidity|speed|direction|precipitation|cover/.test(c[0])?'num':'')+'">'+esc(classicVal(r[c[0]]))+'</td>').join("")+'</tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد سجلات مطابقة.</div>';
-    document.querySelectorAll(".classic-tab").forEach(b=>b.classList.toggle("active",b.dataset.kind===classicState.selected));
+  let classicWeatherRows=[];
+  let classicSelected="";
+  let classicMap=null,classicMarkerLayer=null;
+  const cwVal=v=>{if(v===null||v===undefined||String(v).trim()===""||String(v).trim()==="—")return null;const n=Number(String(v).replace(/^\+/,"").trim());return Number.isFinite(n)?n:null;};
+  const cwFmt=(v,d=1)=>v===null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:d});
+  const cwName=r=>r.station_name||"محطة غير مسماة";
+  const cwMetrics=[
+    {key:"dry_temp",label:"الحرارة الجافة",icon:"🌡️",unit:"°م",max:50},
+    {key:"wet_temp",label:"الحرارة الرطبة",icon:"💧",unit:"°م",max:40},
+    {key:"relative_humidity",label:"الرطوبة النسبية",icon:"💦",unit:"%",max:100},
+    {key:"dew_point",label:"نقطة الندى",icon:"🌫️",unit:"°م",max:35},
+    {key:"wind_speed",label:"سرعة الرياح",icon:"🌬️",unit:"م/ث",max:30},
+    {key:"wind_direction",label:"اتجاه الرياح",icon:"🧭",unit:"درجة",max:360},
+    {key:"total_cloud_cover",label:"الغطاء السحابي",icon:"☁️",unit:"أثمان",max:8},
+    {key:"precipitation_amount",label:"الهطول",icon:"🌧️",unit:"مم",max:100}
+  ];
+  function renderClassicGauges(){
+    const r=classicWeatherRows.find(x=>x.station_name===classicSelected);
+    if(!r){$("classicWeatherGauges").innerHTML='<div class="empty">لا توجد قراءة حديثة للمحطة المختارة.</div>';return;}
+    $("classicWeatherStamp").textContent="آخر تحديث: "+(r.submission_date||"—")+" · "+(r.utc_time||"—")+" UTC";
+    $("classicWeatherGauges").innerHTML=cwMetrics.map(m=>{const v=cwVal(r[m.key]),pct=v===null?0:Math.max(0,Math.min(100,Math.abs(v)/m.max*100));return '<div class="classic-gauge"><span class="g-icon">'+m.icon+'</span><span class="g-label">'+m.label+'</span><strong class="g-value">'+cwFmt(v)+'</strong><span class="g-unit">'+m.unit+'</span><div class="g-track"><i style="width:'+pct+'%"></i></div></div>';}).join("");
+    const sel=$("classicStationSelect");if(sel.value!==classicSelected)sel.value=classicSelected;
   }
-  async function loadClassic(){
-    const kinds=Object.keys(classicDefs);
-    const results=await Promise.all(kinds.map(async k=>{
-      const d=classicDefs[k];const rows=await query(d.view,{select:"*",order:d.order+".desc",limit:"100"});return [k,rows];
-    }));
-    results.forEach(([k,rows])=>classicState.data[k]=rows);
-    $("classicStats").innerHTML=kinds.map(k=>'<div class="classic-stat"><b>'+((classicState.data[k]||[]).length>=100?"100+":(classicState.data[k]||[]).length).toLocaleString("ar")+'</b><small>'+classicDefs[k].title+'</small></div>').join("");
-    renderClassic();
+  function renderClassicLatestCharts(){
+    const defs=[["dry_temp","الحرارة الجافة","°م"],["wet_temp","الحرارة الرطبة","°م"],["relative_humidity","الرطوبة النسبية","%"],["dew_point","نقطة الندى","°م"],["wind_speed","سرعة الرياح","م/ث"],["total_cloud_cover","الغطاء السحابي","أثمان"]];
+    $("classicLatestCharts").innerHTML=defs.map(([key,title,unit])=>{const vals=classicWeatherRows.map(r=>({name:cwName(r),v:cwVal(r[key])})).filter(x=>x.v!==null);const max=Math.max(1,...vals.map(x=>Math.abs(x.v)));return '<div class="latest-chart"><h4>'+title+' · '+unit+'</h4><div class="latest-bars">'+(vals.length?vals.sort((a,b)=>b.v-a.v).map(x=>'<div class="latest-bar-row"><span class="station-label" title="'+esc(x.name)+'">'+esc(x.name)+'</span><span class="bar-bg"><i style="width:'+Math.max(2,Math.abs(x.v)/max*100)+'%"></i></span><b>'+cwFmt(x.v)+'</b></div>').join(""):'<div class="muted">لا توجد قيم متاحة</div>')+'</div></div>';}).join("");
   }
-  $("classicTabs").addEventListener("click",e=>{const b=e.target.closest("[data-kind]");if(!b)return;classicState.selected=b.dataset.kind;renderClassic();});
-  $("classicSearch").addEventListener("input",renderClassic);
+  function initClassicMap(){if(!window.L||classicMap)return;classicMap=L.map("classicMap",{scrollWheelZoom:false}).setView([34.5,38],6);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(classicMap);classicMarkerLayer=L.layerGroup().addTo(classicMap);}
+  function renderClassicMap(){
+    if(!window.L)return;initClassicMap();classicMarkerLayer.clearLayers();const bounds=[];let count=0;
+    classicWeatherRows.forEach(r=>{const lat=cwVal(r.latitude),lon=cwVal(r.longitude);if(lat===null||lon===null)return;count++;const label=cwName(r);const html='<div class="classic-map-popup"><b>'+esc(label)+'</b><span>الحرارة: '+(cwVal(r.dry_temp)===null?"—":cwFmt(cwVal(r.dry_temp))+" °م")+'</span><span>الرطوبة: '+(cwVal(r.relative_humidity)===null?"—":cwFmt(cwVal(r.relative_humidity),0)+"%")+'</span><span>الرياح: '+(cwVal(r.wind_speed)===null?"—":cwFmt(cwVal(r.wind_speed),0)+" م/ث")+'</span><span class="muted">'+esc(r.submission_date||"—")+" · "+esc(r.utc_time||"—")+" UTC"+'</span></div>';L.marker([lat,lon],{title:label}).bindPopup(html).addTo(classicMarkerLayer);bounds.push([lat,lon]);});
+    $("classicMapCount").textContent=count+" موقعاً";if(bounds.length)classicMap.fitBounds(bounds,{padding:[22,22],maxZoom:9});else classicMap.setView([34.5,38],6);setTimeout(()=>classicMap.invalidateSize(),120);
+  }
+  async function loadClassicWeather(){
+    const rows=await query("classic_public_hourly_latest",{select:"station_name,submission_date,utc_time,dry_temp,wet_temp,relative_humidity,dew_point,wind_speed,wind_direction,total_cloud_cover,precipitation_amount,latitude,longitude,created_at",order:"station_name.asc",limit:"200"});
+    classicWeatherRows=rows;const sel=$("classicStationSelect");sel.innerHTML=rows.map(r=>'<option value="'+esc(r.station_name)+'">'+esc(cwName(r))+'</option>').join("");
+    if(!rows.some(r=>r.station_name===classicSelected))classicSelected=rows[0]?.station_name||"";
+    sel.value=classicSelected;renderClassicGauges();renderClassicLatestCharts();renderClassicMap();
+    $("classicStationSelect").onchange=e=>{classicSelected=e.target.value;renderClassicGauges();if(classicMap){const r=classicWeatherRows.find(x=>x.station_name===classicSelected),lat=cwVal(r?.latitude),lon=cwVal(r?.longitude);if(lat!==null&&lon!==null)classicMap.setView([lat,lon],10);}};
+  }
 
   $("refresh").onclick=load;$("search").oninput=renderStations;load();
 })();
