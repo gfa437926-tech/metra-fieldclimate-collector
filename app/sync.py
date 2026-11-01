@@ -136,6 +136,19 @@ async def sync_once():
                             type(first_sensor).__name__,
                             list(first_sensor.keys()) if isinstance(first_sensor, dict) else None,
                             {key: type(value).__name__ for key, value in first_sensor.items()} if isinstance(first_sensor, dict) else None)
+                        if isinstance(first_sensor, dict):
+                            for field in ('vals', 'aggr', 'values'):
+                                nested = first_sensor.get(field)
+                                if isinstance(nested, dict):
+                                    shape = {str(key): type(value).__name__ for key, value in nested.items()}
+                                elif isinstance(nested, list):
+                                    first_nested = nested[0] if nested else None
+                                    shape = {'length': len(nested), 'first_type': type(first_nested).__name__,
+                                             'first_keys': list(first_nested.keys()) if isinstance(first_nested, dict) else None,
+                                             'first_nested_types': {str(key): type(value).__name__ for key, value in first_nested.items()} if isinstance(first_nested, dict) else None}
+                                else:
+                                    shape = {'type': type(nested).__name__}
+                                log.info('Diagnostic sensor field %s shape=%s', field, shape)
                     else:
                         log.info('Diagnostic payload type: %s', type(payload).__name__)
                 records=extract_records(payload)
