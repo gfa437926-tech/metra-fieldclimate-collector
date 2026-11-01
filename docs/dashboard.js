@@ -327,24 +327,44 @@
     },()=>status("لم يسمح المتصفح بتحديد الموقع؛ يمكنك اختيار المحطة يدوياً."),{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
   }
   async function load(){
-    $("refresh").disabled=true;status("جارٍ تحميل آخر سجل لكل محطة والبيانات الزمنية…");
+    $("refresh").disabled=true;status("جارٍ تحميل أجهزة المحطات والبيانات…");
+    let partialErrors=[];
     try{
       const [stations,latest]=await Promise.all([
         query("fieldclimate_public_stations",{select:"station_id,station_name,latitude,longitude,altitude_m,last_synced_at",order:"station_name.asc",limit:"500"}),
         query("fieldclimate_public_latest_readings",{select:"station_id,station_name,recorded_at,group_name,measurements,fetched_at",order:"recorded_at.desc",limit:"500"})
       ]);
-      state.stations=stations;state.latestByStation=new Map(latest.map(r=>[r.station_id,r]));
-      $("stationCount").textContent=stations.length.toLocaleString("ar");
-      const fresh=latest.filter(r=>Date.now()-new Date(r.recorded_at).getTime()<=24*60*60*1000);
+      state.stations=Array.isArray(stations)?stations:[];
+      state.latestByStation=new Map((Array.isArray(latest)?latest:[]).map(r=>[r.station_id,r]));
+      $("stationCount").textContent=state.stations.length.toLocaleString("ar");
+      const fresh=(Array.isArray(latest)?latest:[]).filter(r=>Date.now()-new Date(r.recorded_at).getTime()<=24*60*60*1000);
       $("activeCount").textContent=fresh.length.toLocaleString("ar");
-      $("lastSync").textContent=fmt(stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
-      if(!stations.some(x=>x.station_id===state.selected))state.selected=stations[0]?.station_id||"";
-      renderStations();renderMap();renderTemperatureComparison();
+      $("lastSync").textContent=fmt(state.stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
+      if(!state.stations.some(x=>x.station_id===state.selected))state.selected=state.stations[0]?.station_id||"";
+      renderStations();
+      renderAllStationDevices();
+      try{renderMap();}catch(e){partialErrors.push("الخريطة: "+e.message);}
+      try{renderTemperatureComparison();}catch(e){partialErrors.push("المقارنة: "+e.message);}
       const since=new Date(Date.now()-24*60*60*1000).toISOString();
-      try{state.networkHistory=await query("fieldclimate_public_readings",{select:"station_id,recorded_at,group_name,measurements",recorded_at:"gte."+since,order:"recorded_at.asc",limit:"10000"});}catch(_){state.networkHistory=[];}
-      await loadReadings();await loadClassicWeather();renderAllStationDevices();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");selectNearestVisitorStation();
-    }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
-    finally{$("refresh").disabled=false;}
+      try{
+        state.networkHistory=await query("fieldclimate_public_readings",{select:"station_id,recorded_at,group_name,measurements",recorded_at:"gte."+since,order:"recorded_at.asc",limit:"10000"});
+      }catch(e){state.networkHistory=[];partialErrors.push("السجل التاريخي الآلي: "+e.message);}
+      await loadReadings();
+      renderAllStationDevices();
+      try{await loadClassicWeather();}
+      catch(e){
+        classicWeatherRows=[];
+        partialErrors.push("البيانات الكلاسيكية: "+e.message);
+        renderStations();renderAllStationDevices();
+      }
+      renderAllStationDevices();
+      status(partialErrors.length?"تم تحميل الأجهزة مع تعذر تحميل بعض التفاصيل: "+partialErrors.join(" · "):"متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
+      selectNearestVisitorStation();
+    }catch(e){
+      renderAllStationDevices();
+      status("تعذر تحميل بيانات المحطات: "+e.message,"err");
+      $("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';
+    }finally{$("refresh").disabled=false;}
   }
 
   let classicWeatherRows=[];
