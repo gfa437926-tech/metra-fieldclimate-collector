@@ -125,6 +125,7 @@
     const wind=metricNumber(row,["U-sonic wind speed","Wind speed"],["last","avg","result","value"]);
     return '<div class="popup-metrics">'+(t===null?"":'<span>🌡️ '+num(t)+' °C</span>')+(rh===null?"":'<span>💧 '+num(rh)+'%</span>')+(wind===null?"":'<span>🌬️ '+num(wind)+' م/ث</span>')+'</div><small>آخر سجل: '+fmt(row.recorded_at)+'</small>';
   }
+  function airportIcon(){return L.divIcon({className:"airport-marker-wrap",html:'<span class="airport-marker" title="مطار" aria-label="مطار">✈</span>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-10]});}
   function renderMap(){
     if(!window.L)return;
     initMap();state.markerLayer.clearLayers();state.markers.clear();const bounds=[];
@@ -189,25 +190,17 @@
   }
   function renderGaugeBoard(row){
     const root=$("gaugeBoard");if(!root)return;
-    const dir=metricNumber(row,["U-sonic wind dir","Wind direction","Wind orientation"]);
-    const speed=metricNumber(row,["U-sonic wind speed","Wind speed"]);
-    const temp=metricNumber(row,["HC Air temperature","Air temperature"]);
-    const hum=metricNumber(row,["HC Relative humidity","Relative humidity"]);
-    const rain=metricNumber(row,["Precipitation"],["sum","last","avg"]);
-    const solar=metricNumber(row,["Solar radiation"],["avg","last"]);
-    const cloud=metricNumber(row,["Cloud cover","Total cloud cover"]);
-    const compass=dir===null?'<div class="gauge-empty">لا توجد قراءة اتجاه</div>':'<div class="compass"><span class="north">ش</span><span class="east">ق</span><span class="south">ج</span><span class="west">غ</span><i style="transform:rotate('+dir+'deg)"></i><b>🧭</b></div><strong>'+num(dir)+'°</strong>';
-    const dial=(value,unit,max)=>'<div class="dial" style="--pct:'+Math.max(0,Math.min(100,(value??0)/max*100))+'%"><div class="dial-inner"><b>'+(value===null?"—":num(value))+'</b><small>'+unit+'</small></div></div>';
-    const bars='<div class="device-bars">'+[28,52,38,76,44,62,32,85,48].map((v,i)=>'<i style="height:'+v+'%"></i>').join("")+'</div>';
-    const spark='<svg class="device-spark" viewBox="0 0 180 34" aria-hidden="true"><path d="M0 27 C20 24 25 7 45 13 S70 31 91 18 S124 4 140 16 S164 26 180 8" fill="none" stroke="#e7ad36" stroke-width="3" stroke-linecap="round"/><path d="M0 34 L0 27 C20 24 25 7 45 13 S70 31 91 18 S124 4 140 16 S164 26 180 8 L180 34Z" fill="#f9df9a" opacity=".5"/></svg>';
-    root.innerHTML='<div class="device-grid">'+
-      '<div class="device device--temperature"><div class="device-head">🌡️ درجة حرارة الهواء</div><div class="device-reading">'+(temp===null?"—":num(temp))+' <small>°م</small></div><div class="device-condition">'+(temp===null?"لا توجد قراءة":temp>=35?"حار":temp>=25?"دافئ":temp>=15?"معتدل":"بارد")+'</div></div>'+
-      '<div class="device device--humidity"><div class="device-head">💧 الرطوبة النسبية</div>'+dial(hum,"%",100)+'</div>'+
-      '<div class="device device--wind"><div class="device-head">🧭 اتجاه الرياح</div>'+compass+'<div class="device-condition">سرعة '+(speed===null?"—":num(speed)+" م/ث")+'</div></div>'+
-      '<div class="device device--cloud"><div class="device-head">☁️ حالة الغطاء السحابي</div><div class="device-reading">'+(cloud===null?"—":num(cloud))+' <small>أثمان</small></div><div class="device-condition">'+(cloud===null?"لا توجد قراءة":cloud<=2?"سماء صافية":cloud<=5?"غيوم متفرقة":"غائم")+'</div></div>'+
-      '<div class="device device--solar"><div class="device-head">☀️ الإشعاع الشمسي</div><div class="device-reading">'+(solar===null?"—":num(solar))+' <small>W/m²</small></div>'+spark+'</div>'+
-      '<div class="device device--rain"><div class="device-head">🌧️ الهطول المطري</div><div class="device-reading">'+(rain===null?"—":num(rain))+' <small>mm</small></div>'+bars+'</div>'+
-    '</div>';
+    const all=row?.measurements?.values||{};
+    const metrics=Object.entries(all).map(([key,m])=>({key,...(m||{})})).filter(m=>m.name||m.code||m.key);
+    if(!metrics.length){root.innerHTML='<div class="chart-empty">لا توجد أجهزة أو قياسات مسجلة في أحدث سجل لهذه المحطة.</div>';return;}
+    const iconFor=name=>{const n=String(name||"").toLowerCase();return /temperature|dew point/.test(n)?"🌡️":/humidity|moisture|wetness/.test(n)?"💧":/wind|gust/.test(n)?"🌬️":/rain|precipitation/.test(n)?"🌧️":/solar|radiation|sunshine|light/.test(n)?"☀️":/pressure|vpd/.test(n)?"🧭":/soil/.test(n)?"🌱":/battery|voltage|panel/.test(n)?"🔋":/leaf/.test(n)?"🍃":"📟";};
+    const categoryFor=name=>{const n=String(name||"").toLowerCase();return /temperature|dew point|humidity|wind|rain|precipitation|radiation|pressure|cloud|solar/.test(n)?"الأرصاد الجوية":/soil|moisture|leaf|evapotranspiration|et0/.test(n)?"التربة والمياه":/battery|voltage|serial|switch/.test(n)?"حالة الجهاز":"قياسات إضافية";};
+    const readValue=m=>{const v=m.values&&typeof m.values==="object"?m.values:{};const k=["last","avg","sum","result","value","min","max","time"].find(x=>v[x]!==null&&v[x]!==undefined);return k?{key:k,value:v[k],values:v}:{key:"",value:null,values:v};};
+    root.innerHTML='<div class="device-grid">'+metrics.map(m=>{
+      const r=readValue(m),unit=m.unit&&m.unit!==false?m.unit:"",details=Object.entries(r.values).filter(([k,v])=>k!==r.key&&v!==null&&v!==undefined&&typeof v!=="object").map(([k,v])=>'<span class="metric-detail"><small>'+esc(metricLabels[k]||k)+'</small><b>'+num(v)+'</b></span>').join("");
+      const name=sensorLabel(m.name||m.key),channel=m.channel??"—",code=m.code??m.key??"—";
+      return '<article class="device device--dynamic"><div class="device-head"><span>'+iconFor(m.name||m.key)+'</span>'+esc(name)+'</div><div class="device-category">'+esc(categoryFor(m.name||m.key))+'</div><div class="device-reading">'+(r.value===null?"—":num(r.value))+' <small>'+esc(unit)+'</small></div><div class="device-condition">'+(r.key?esc(metricLabels[r.key]||r.key):"لا توجد قيمة رقمية")+'</div>'+(details?'<div class="metric-details">'+details+'</div>':"")+'<div class="device-meta">القناة '+esc(channel)+' · الرمز '+esc(code)+'</div></article>';
+    }).join("")+'</div><div class="device-total">عدد أنواع القياس المتاحة في أحدث سجل: '+metrics.length.toLocaleString("ar")+'</div>';
   }
   function chartSvg(points,label,unit){
     const vals=points.filter(p=>p.v!==null);if(vals.length<2)return '<div class="chart-empty">لا توجد نقاط كافية خلال آخر 24 ساعة</div>';
