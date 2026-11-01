@@ -233,9 +233,37 @@
       $("activeCount").textContent=fresh.length.toLocaleString("ar");
       $("lastSync").textContent=fmt(stations.map(x=>x.last_synced_at).filter(Boolean).sort().at(-1));
       if(!stations.some(x=>x.station_id===state.selected))state.selected=stations[0]?.station_id||"";
-      renderStations();renderMap();renderTemperatureComparison();await loadReadings();status("متصل · أحدث سجل لكل محطة جاهز","ok");
+      renderStations();renderMap();renderTemperatureComparison();await loadReadings();await loadClassic();status("متصل · بيانات FieldClimate والتقارير الكلاسيكية جاهزة","ok");
     }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
     finally{$("refresh").disabled=false;}
   }
-  $("refresh").onclick=load;$("search").oninput=renderStations;load();
+
+  const classicDefs={
+    hourly:{view:"classic_public_hourly_reports",order:"created_at",title:"التقارير الساعية",cols:[["station_name","المحطة"],["submission_date","التاريخ"],["submission_time","وقت الإدخال"],["dry_temp","الحرارة الجافة °م"],["wet_temp","الحرارة الرطبة °م"],["relative_humidity","الرطوبة %"],["wind_speed","سرعة الرياح"],["wind_direction","اتجاه الرياح"],["precipitation_amount","الهطول"]] },
+    daily:{view:"classic_public_daily_reports",order:"created_at",title:"التقارير اليومية",cols:[["station","المحطة"],["report_date","التاريخ"],["report_period","الفترة"],["min_temperature","الصغرى °م"],["max_temperature","العظمى °م"],["precipitation","الهطول"],["snow_thickness","سماكة الثلج"],["sunshine_duration","سطوع الشمس"]] },
+    soil:{view:"classic_public_soil_temperatures",order:"submitted_at",title:"حرارة التربة",cols:[["station","المحطة"],["observation_date","تاريخ الرصد"],["utc_time","التوقيت العالمي"],["soil_temp_5cm","عمق 5 سم °م"],["soil_temp_10cm","عمق 10 سم °م"],["soil_temp_20cm","عمق 20 سم °م"],["soil_temp_50cm","عمق 50 سم °م"]] },
+    phenomena:{view:"classic_public_weather_phenomena",order:"created_at",title:"الظواهر الجوية",cols:[["station_name","المحطة"],["phenomenon_date","التاريخ"],["phenomenon_type","الظاهرة"],["start_time","وقت البداية"],["end_time","وقت النهاية"],["phenomenon_duration","المدة"],["phenomenon_status","الحالة"]] },
+    climate:{view:"classic_public_climate_reports",order:"submitted_at",title:"التقارير المناخية",cols:[["station","المحطة"],["report_date","التاريخ"],["utc_time","التوقيت العالمي"],["dry_temperature","الحرارة الجافة °م"],["wet_temperature","الحرارة الرطبة °م"],["relative_humidity","الرطوبة %"],["dew_point","نقطة الندى °م"],["wind_speed","سرعة الرياح"],["wind_direction","اتجاه الرياح"],["total_cloud_cover","الغطاء السحابي"]] }
+  };
+  const classicState={data:{},selected:"hourly"};
+  const classicVal=v=>v===null||v===undefined||v===""?"—":String(v);
+  function renderClassic(){
+    const def=classicDefs[classicState.selected],rows=classicState.data[classicState.selected]||[],q=$("classicSearch").value.trim().toLowerCase();
+    const filtered=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+    $("classicMeta").textContent=def.title+" · "+filtered.length.toLocaleString("ar")+" من "+rows.length.toLocaleString("ar")+" سجل محمّل";
+    $("classicTableWrap").innerHTML=filtered.length?'<table class="classic-table"><thead><tr>'+def.cols.map(c=>'<th>'+c[1]+'</th>').join("")+'</tr></thead><tbody>'+filtered.map(r=>'<tr>'+def.cols.map(c=>'<td class="'+(/temp|humidity|speed|direction|precipitation|cover/.test(c[0])?'num':'')+'">'+esc(classicVal(r[c[0]]))+'</td>').join("")+'</tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد سجلات مطابقة.</div>';
+    document.querySelectorAll(".classic-tab").forEach(b=>b.classList.toggle("active",b.dataset.kind===classicState.selected));
+  }
+  async function loadClassic(){
+    const kinds=Object.keys(classicDefs);
+    const results=await Promise.all(kinds.map(async k=>{
+      const d=classicDefs[k];const rows=await query(d.view,{select:"*",order:d.order+".desc",limit:"100"});return [k,rows];
+    }));
+    results.forEach(([k,rows])=>classicState.data[k]=rows);
+    $("classicStats").innerHTML=kinds.map(k=>'<div class="classic-stat"><b>'+((classicState.data[k]||[]).length>=100?"100+":(classicState.data[k]||[]).length).toLocaleString("ar")+'</b><small>'+classicDefs[k].title+'</small></div>').join("");
+    renderClassic();
+  }
+  $("classicTabs").addEventListener("click",e=>{const b=e.target.closest("[data-kind]");if(!b)return;classicState.selected=b.dataset.kind;renderClassic();});
+  $("classicSearch").addEventListener("input",renderClassic);
+\n  $("refresh").onclick=load;$("search").oninput=renderStations;load();
 })();
