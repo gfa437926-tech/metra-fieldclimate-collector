@@ -69,7 +69,11 @@
   function renderStations(){
     const q=$("search").value.trim().toLowerCase();
     const list=state.stations.filter(s=>stationLabel(s).toLowerCase().includes(q)||(s.station_name||"").toLowerCase().includes(q)||(s.station_id||"").toLowerCase().includes(q));
-    $("stations").innerHTML=list.length?list.map(s=>'<button class="station '+(s.station_id===state.selected?'active':'')+'" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small>'+esc(s.station_id)+' · '+fmt(s.last_synced_at)+'</small></button>').join(""):'<div class="empty">لا توجد نتائج</div>';
+    $("stations").innerHTML=list.length?list.map(s=>{
+      const latest=state.latestByStation.get(s.station_id);
+      const t=metricNumber(latest,["HC Air temperature","Air temperature"],["avg","last","result","value"]);
+      return '<button class="station '+(s.station_id===state.selected?'active':'')+'" data-id="'+esc(encodeURIComponent(s.station_id))+'"><b>'+esc(stationLabel(s))+'</b><small>'+esc(s.station_id)+' · آخر سجل: '+fmt(latest?.recorded_at)+(t===null?'':' · '+num(t)+'°C')+'</small></button>';
+    }).join(""):'<div class="empty">لا توجد نتائج</div>';
     document.querySelectorAll(".station").forEach(b=>b.onclick=()=>selectStation(decodeURIComponent(b.dataset.id),true));
   }
   function selectStation(id,zoom){
@@ -234,5 +238,5 @@
     }catch(e){status(e.message,"err");$("readings").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
     finally{$("refresh").disabled=false;}
   }
-  $("refresh").onclick=load;$("search").oninput=renderStations;$("group").onchange=loadReadings;load();
+  $("refresh").onclick=load;$("search").oninput=renderStations;load();
 })();
